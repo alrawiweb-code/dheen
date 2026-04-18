@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700;800&amp;family=Noto+Naskh+Arabic:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary-fixed": "#0d1f17",
+                        "on-primary-fixed-variant": "#005142",
+                        "surface-bright": "#fbf9f4",
+                        "error-container": "#ffdad6",
+                        "surface": "#fbf9f4",
+                        "surface-variant": "#e4e2dd",
+                        "inverse-primary": "#85d6c0",
+                        "tertiary-container": "#52655b",
+                        "surface-dim": "#dbdad5",
+                        "outline": "#6f7975",
+                        "secondary-fixed": "#ffe088",
+                        "on-surface-variant": "#3f4945",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f5f3ee",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#0a6b59",
+                        "on-primary-container": "#9aecd5",
+                        "surface-container-high": "#eae8e3",
+                        "primary-fixed-dim": "#85d6c0",
+                        "tertiary": "#3a4d43",
+                        "primary": "#005344",
+                        "on-secondary-container": "#745c00",
+                        "surface-container-highest": "#e4e2dd",
+                        "inverse-on-surface": "#f2f1ec",
+                        "on-tertiary-fixed-variant": "#384b41",
+                        "surface-container": "#f0eee9",
+                        "on-surface": "#1b1c19",
+                        "on-secondary-fixed": "#241a00",
+                        "primary-container": "#0f6d5b",
+                        "primary-fixed": "#a1f2db",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#b6cbbf",
+                        "secondary-fixed-dim": "#e9c349",
+                        "on-primary-fixed": "#002019",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "background": "#fbf9f4",
+                        "secondary-container": "#fed65b",
+                        "on-tertiary-container": "#cce1d4",
+                        "tertiary-fixed": "#d2e8da",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#bec9c4",
+                        "on-background": "#1b1c19",
+                        "inverse-surface": "#30312e",
+                        "on-error": "#ffffff",
+                        "secondary": "#735c00",
+                        "on-secondary-fixed-variant": "#574500"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"],
+                        "arabic": ["Noto Naskh Arabic"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .arabic-text {
+            font-family: 'Noto Naskh Arabic', serif;
+            font-size: 1.25em;
+            line-height: 1.8;
+        }
+        body {
+            background-color: #FBF9F4;
+            font-family: 'Manrope', sans-serif;
+            color: #1B1C19;
+        }
+        .glass-card {
+            background: rgba(251, 249, 244, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-32">
+<header class="fixed top-0 w-full z-50 bg-[#FBF9F4]/80 backdrop-blur-md shadow-[0_10px_30px_-15px_rgba(0,83,68,0.1)] flex justify-between items-center px-6 py-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="User Profile" data-alt="portrait of a young man with a serene expression wearing a minimalist linen shirt in a sunlit warm interior" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB36YCwuf2GCMEOO79ZacbzKPKY_n9-hdRckWfER2VfMaJvckGsB-3YedYgy-6YmSR0lSWWlHTLEimE4V1U4IqtmrZvHScqs-htSmxURsLFx5Kw1cEL4315CIKL0BWC8FdeelTkDshnHKwFbILWC5DlX5r8wPucEVUA-CjHD93MxcPCRMAV16KIPHpc8DuJLka-F70WVwoM2syvfd3ZHu-n5RWWntilyLma20qjbymPfm2wy4sr7ML_C3OUDUd84l3rDlC0hujG7in0"/>
+</div>
+<div>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold text-sm text-[#005344]">Assalamu alaikum, User</h1>
+<p class="font-['Plus_Jakarta_Sans'] text-[11px] tracking-widest text-[#735C00] font-bold">14 Shawwal 1446</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-sm font-bold text-[#005344]">12:42 PM</span>
+<span class="material-symbols-outlined text-[#005344] hover:opacity-80 transition-opacity cursor-pointer">brightness_high</span>
+</div>
+</header>
+<main class="mt-24 px-6 space-y-8">
+<section class="bg-primary/5 rounded-2xl p-4 flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">edit_note</span>
+</div>
+<span class="text-sm font-semibold text-primary">Set your intention for today</span>
+</div>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">chevron_right</span>
+</section>
+<section class="relative h-64 rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-end p-6">
+<img alt="Mosque background" class="absolute inset-0 w-full h-full object-cover" data-alt="distant silhouette of a majestic mosque with elegant minarets against a soft golden and teal dusk sky during twilight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClPwJRa0MtcMu_7rpTpSdeoDyfqzpW_jkOlsqmQfthtxLA_fto653FQhN9SDUESe7kseBUf3Lg1vHuIrJjRZJQvuqa1Rjl3A9-zrPANkhmqYKaFNZaSUlp4hNdrqwReF0wy8wVGPBy9GMMtzmu4rSypoIkatXr3LiZUX7JE_K8xqrJ9SZzJProzLcDeU1dUOzawhAJOPmd9EQO8FcsQPsGy5jpJA61ACUPz4SXmFaBFHLIJZnka4mTEW7vMaBDGhQ5u4EhIEp97-y7"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent"></div>
+<div class="relative z-10 glass-card rounded-2xl p-5 border border-white/20 flex justify-between items-end">
+<div>
+<span class="text-[10px] font-bold uppercase tracking-widest text-primary/70">Next Prayer</span>
+<h2 class="font-headline text-3xl font-extrabold text-primary">Dhuhr</h2>
+<p class="text-lg font-bold text-primary/80">02:15 PM</p>
+</div>
+<button class="bg-secondary text-on-secondary px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-secondary/20 hover:scale-105 transition-transform active:scale-95">
+                    Set Reminder
+                </button>
+</div>
+</section>
+<section class="grid grid-cols-4 gap-4">
+<div class="flex flex-col items-center gap-2 group cursor-pointer">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-primary text-2xl">menu_book</span>
+</div>
+<span class="text-[11px] font-bold text-on-surface">Quran</span>
+</div>
+<div class="flex flex-col items-center gap-2 group cursor-pointer">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-primary text-2xl">auto_stories</span>
+</div>
+<span class="text-[11px] font-bold text-on-surface">Duas</span>
+</div>
+<div class="flex flex-col items-center gap-2 group cursor-pointer">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-primary text-2xl">explore</span>
+</div>
+<span class="text-[11px] font-bold text-on-surface">Qibla</span>
+</div>
+<div class="flex flex-col items-center gap-2 group cursor-pointer">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-primary text-2xl">monitoring</span>
+</div>
+<span class="text-[11px] font-bold text-on-surface">Tracker</span>
+</div>
+</section>
+<section class="bg-surface-container-low rounded-3xl p-6">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline font-bold text-on-surface">Habit Tracker</h3>
+<span class="text-xs font-bold text-primary/60">2/5 Done</span>
+</div>
+<div class="flex justify-between px-2">
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-[9px] font-bold text-primary">Fajr</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-[9px] font-bold text-primary">Sunrise</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-primary/20 bg-white"></div>
+<span class="text-[9px] font-bold text-on-surface/40">Dhuhr</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-primary/20 bg-white"></div>
+<span class="text-[9px] font-bold text-on-surface/40">Asr</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-primary/20 bg-white"></div>
+<span class="text-[9px] font-bold text-on-surface/40">Maghrib</span>
+</div>
+</div>
+</section>
+<section class="bg-primary-container/10 border-l-4 border-primary rounded-r-2xl p-6 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-10">
+<span class="material-symbols-outlined text-8xl text-primary">format_quote</span>
+</div>
+<p class="arabic-text text-right text-primary font-arabic mb-4" dir="rtl">فَإِنَّ مَعَ الْعُسْرِ يُسْرًا</p>
+<p class="font-body text-sm italic text-on-surface-variant leading-relaxed">"For indeed, with hardship [will be] ease." — Surah Ash-Sharh [94:5]</p>
+</section>
+<section class="space-y-4">
+<div class="flex justify-between items-center px-2">
+<h3 class="font-headline font-bold text-on-surface">Prayer Times</h3>
+<span class="text-[10px] font-bold text-primary/60 uppercase tracking-widest">London, UK</span>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary opacity-40">nights_stay</span>
+<span class="font-bold text-sm">Fajr</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-sm font-bold text-on-surface/60">04:12 AM</span>
+<span class="material-symbols-outlined text-primary/40 text-xl cursor-pointer">notifications_off</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary">wb_sunny</span>
+<span class="font-bold text-sm text-primary">Dhuhr</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-sm font-bold text-primary">02:15 PM</span>
+<span class="material-symbols-outlined text-primary text-xl cursor-pointer" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary opacity-40">sunny_snowing</span>
+<span class="font-bold text-sm">Asr</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-sm font-bold text-on-surface/60">05:48 PM</span>
+<span class="material-symbols-outlined text-primary/40 text-xl cursor-pointer">notifications_off</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary opacity-40">routine</span>
+<span class="font-bold text-sm">Maghrib</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-sm font-bold text-on-surface/60">08:02 PM</span>
+<span class="material-symbols-outlined text-primary/40 text-xl cursor-pointer">notifications_off</span>
+</div>
+</div>
+</div>
+</section>
+<section class="flex justify-center pt-4">
+<button class="bg-[#735C00] text-white px-8 py-4 rounded-full flex items-center gap-3 shadow-xl shadow-[#735C00]/20 hover:scale-105 transition-all group">
+<span class="material-symbols-outlined text-xl group-hover:rotate-12 transition-transform">volunteer_activism</span>
+<span class="font-headline font-bold text-sm tracking-wide">1 Minute for Allah</span>
+</button>
+</section>
+</main>
+<div class="fixed right-6 bottom-28 z-50">
+<button class="w-16 h-16 bg-gradient-to-br from-primary to-primary-container rounded-full flex items-center justify-center text-white shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all group">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-12 transition-transform">brightness_3</span>
+</button>
+</div>
+<nav class="fixed bottom-0 left-0 w-full px-4 pb-6 pt-3 flex justify-around items-center bg-[#FBF9F4]/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(0,83,68,0.05)] rounded-t-[32px] z-50">
+<div class="flex flex-col items-center justify-center text-[#005344] bg-[#005344]/10 rounded-2xl px-3 py-1 scale-110">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors">
+<span class="material-symbols-outlined text-2xl">menu_book</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Quran</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors">
+<span class="material-symbols-outlined text-2xl">auto_awesome_motion</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Prayers</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors">
+<span class="material-symbols-outlined text-2xl">auto_stories</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Duas</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors">
+<span class="material-symbols-outlined text-2xl">person</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Profile</span>
+</div>
+</nav>
+</body></html>

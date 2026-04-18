@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Naskh+Arabic:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#0d1f17",
+                    "on-primary-fixed-variant": "#005142",
+                    "surface-bright": "#fbf9f4",
+                    "error-container": "#ffdad6",
+                    "surface": "#fbf9f4",
+                    "surface-variant": "#e4e2dd",
+                    "inverse-primary": "#85d6c0",
+                    "tertiary-container": "#52655b",
+                    "surface-dim": "#dbdad5",
+                    "outline": "#6f7975",
+                    "secondary-fixed": "#ffe088",
+                    "on-surface-variant": "#3f4945",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f5f3ee",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#0a6b59",
+                    "on-primary-container": "#9aecd5",
+                    "surface-container-high": "#eae8e3",
+                    "primary-fixed-dim": "#85d6c0",
+                    "tertiary": "#3a4d43",
+                    "primary": "#005344",
+                    "on-secondary-container": "#745c00",
+                    "surface-container-highest": "#e4e2dd",
+                    "inverse-on-surface": "#f2f1ec",
+                    "on-tertiary-fixed-variant": "#384b41",
+                    "surface-container": "#f0eee9",
+                    "on-surface": "#1b1c19",
+                    "on-secondary-fixed": "#241a00",
+                    "primary-container": "#0f6d5b",
+                    "primary-fixed": "#a1f2db",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#b6cbbf",
+                    "secondary-fixed-dim": "#e9c349",
+                    "on-primary-fixed": "#002019",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "background": "#fbf9f4",
+                    "secondary-container": "#fed65b",
+                    "on-tertiary-container": "#cce1d4",
+                    "tertiary-fixed": "#d2e8da",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#bec9c4",
+                    "on-background": "#1b1c19",
+                    "inverse-surface": "#30312e",
+                    "on-error": "#ffffff",
+                    "secondary": "#735c00",
+                    "on-secondary-fixed-variant": "#574500"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"],
+                    "arabic": ["Noto Naskh Arabic"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .bg-radial-glow {
+            background: radial-gradient(circle at center, rgba(254, 214, 91, 0.15) 0%, rgba(251, 249, 244, 0) 70%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-fixed-dim">
+<!-- Top Navigation Anchor (Manual suppression of Shell for task-focus) -->
+<header class="fixed top-0 w-full z-50 bg-[#FBF9F4]/80 backdrop-blur-md flex justify-between items-center px-6 py-4">
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-on-surface">close</span>
+</button>
+</div>
+<div class="bg-secondary-container/30 px-4 py-1.5 rounded-full border border-secondary/10 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-headline font-bold text-xs tracking-widest text-secondary uppercase">✦ 1 Minute for Allah</span>
+</div>
+<div class="w-10"></div> <!-- Spacer for balance -->
+</header>
+<!-- Progress Tracker (Task Specific) -->
+<div class="fixed top-20 left-0 w-full px-6 flex gap-2 z-40">
+<!-- Ayah Segment (Active) -->
+<div class="h-1 flex-1 bg-primary rounded-full relative overflow-hidden">
+<div class="absolute inset-0 bg-white/30 animate-pulse"></div>
+</div>
+<!-- Dhikr Segment (Upcoming) -->
+<div class="h-1 flex-1 bg-outline-variant/30 rounded-full overflow-hidden"></div>
+<!-- Dua Segment (Upcoming) -->
+<div class="h-1 flex-1 bg-outline-variant/30 rounded-full overflow-hidden"></div>
+</div>
+<!-- Main Content Canvas -->
+<main class="min-h-screen flex flex-col items-center justify-center px-8 relative overflow-hidden bg-radial-glow">
+<!-- Decorative Background Element -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-20 pointer-events-none">
+<div class="w-full h-full bg-[radial-gradient(circle_at_center,_#005344_0%,_transparent_60%)] opacity-10"></div>
+</div>
+<!-- Content Card: Transition State - Ayah (Active) -->
+<section class="max-w-2xl w-full text-center z-10 flex flex-col items-center gap-12">
+<!-- State Indicator Label -->
+<div class="flex flex-col items-center gap-2">
+<span class="text-secondary font-headline font-bold text-sm tracking-[0.2em] uppercase opacity-60">Reflection</span>
+<div class="w-1 h-1 rounded-full bg-secondary"></div>
+</div>
+<!-- The Divine Word (Arabic) -->
+<div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+<h1 class="font-arabic text-4xl md:text-5xl lg:text-6xl text-primary leading-[1.8] text-center" dir="rtl">
+                    فَاذْكُرُونِي أَذْكُرْكُمْ
+                </h1>
+<!-- Meaning / Translation -->
+<div class="space-y-4">
+<p class="font-headline text-2xl md:text-3xl font-bold text-on-surface tracking-tight leading-snug">
+                        "So remember Me; I will remember you."
+                    </p>
+<p class="text-on-surface-variant font-medium tracking-wide">
+                        Surah Al-Baqarah 2:152
+                    </p>
+</div>
+</div>
+<!-- Time Remaining Pulse -->
+<div class="flex items-center justify-center mt-8">
+<div class="relative w-24 h-24 flex items-center justify-center">
+<!-- SVG Progress Circle -->
+<svg class="absolute inset-0 w-full h-full -rotate-90">
+<circle class="text-outline-variant/20" cx="48" cy="48" fill="transparent" r="44" stroke="currentColor" stroke-width="2"></circle>
+<circle class="text-primary transition-all duration-1000" cx="48" cy="48" fill="transparent" r="44" stroke="currentColor" stroke-dasharray="276" stroke-dashoffset="69" stroke-width="3"></circle>
+</svg>
+<div class="flex flex-col items-center">
+<span class="text-2xl font-headline font-extrabold text-primary">07</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">Seconds</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Ambient Instruction (Bottom) -->
+<footer class="fixed bottom-12 w-full text-center px-8 z-10">
+<p class="text-on-surface-variant/60 font-medium italic text-sm">
+                Take a deep breath and let the words settle in your heart.
+            </p>
+</footer>
+</main>
+<!-- Visual Textures & Light Rays -->
+<div class="fixed inset-0 pointer-events-none z-0">
+<!-- Top Left Ray -->
+<div class="absolute -top-24 -left-24 w-96 h-96 bg-primary-fixed/10 blur-[100px] rounded-full"></div>
+<!-- Bottom Right Ray -->
+<div class="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary-fixed/10 blur-[100px] rounded-full"></div>
+</div>
+<!-- Hidden Image Data for Generation -->
+<div class="hidden">
+<img data-alt="Soft ethereal background with subtle patterns of Islamic geometry and warm golden light filtering through a soft haze" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkjWvs_RtxTjf0bYCu-ebbsGfm-3-wzLv88sjDhU7jHjcx4cMsrYM7My9QF6nt3iOUtmvOSRtc_mJBMN5Ks87j8CWfmnkPOHrI2USLq4JqWWV_E7nCrhbabDyDD2Vgh4YeE_mUdlAWN6K7oiRG_YiQjA1wBVANZhDfIk7QxEAGvy_KInxdjSskdOVupxmc97RUkqWEpZam87pgEcFm7xH82P3QdaPUYHCyynarnWYOidEgYHGsPGauq6kvyjrLeWlm_JxAJ-pg548W"/>
+</div>
+</body></html>

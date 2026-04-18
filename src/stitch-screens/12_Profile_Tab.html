@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Profile - The Ethereal Sanctuary</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700;800&amp;family=Noto+Naskh+Arabic:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#0d1f17",
+                        "on-primary-fixed-variant": "#005142",
+                        "surface-bright": "#fbf9f4",
+                        "error-container": "#ffdad6",
+                        "surface": "#fbf9f4",
+                        "surface-variant": "#e4e2dd",
+                        "inverse-primary": "#85d6c0",
+                        "tertiary-container": "#52655b",
+                        "surface-dim": "#dbdad5",
+                        "outline": "#6f7975",
+                        "secondary-fixed": "#ffe088",
+                        "on-surface-variant": "#3f4945",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f5f3ee",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#0a6b59",
+                        "on-primary-container": "#9aecd5",
+                        "surface-container-high": "#eae8e3",
+                        "primary-fixed-dim": "#85d6c0",
+                        "tertiary": "#3a4d43",
+                        "primary": "#005344",
+                        "on-secondary-container": "#745c00",
+                        "surface-container-highest": "#e4e2dd",
+                        "inverse-on-surface": "#f2f1ec",
+                        "on-tertiary-fixed-variant": "#384b41",
+                        "surface-container": "#f0eee9",
+                        "on-surface": "#1b1c19",
+                        "on-secondary-fixed": "#241a00",
+                        "primary-container": "#0f6d5b",
+                        "primary-fixed": "#a1f2db",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#b6cbbf",
+                        "secondary-fixed-dim": "#e9c349",
+                        "on-primary-fixed": "#002019",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "background": "#fbf9f4",
+                        "secondary-container": "#fed65b",
+                        "on-tertiary-container": "#cce1d4",
+                        "tertiary-fixed": "#d2e8da",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#bec9c4",
+                        "on-background": "#1b1c19",
+                        "inverse-surface": "#30312e",
+                        "on-error": "#ffffff",
+                        "secondary": "#735c00",
+                        "on-secondary-fixed-variant": "#574500"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .arabic-text {
+            font-family: 'Noto Naskh Arabic', serif;
+            font-size: 120%;
+            line-height: 1.8;
+        }
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #FBF9F4;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface mb-24">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 w-full z-50 bg-[#FBF9F4]/80 backdrop-blur-md shadow-[0_10px_30px_-15px_rgba(0,83,68,0.1)] flex justify-between items-center px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
+<img alt="User profile avatar" class="w-full h-full object-cover" data-alt="close-up portrait of a serene man with a short beard in soft natural light against a neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOfQV_J8fFGCxoWD9pQIHlybXNZTqns78GzTvQuf2UHv4SG16dpFIg5ftLpiqT1avJA73okCrBUsp4YlkJBnSAXmHr8N2Du-Z8RfoBXETtpD-P9O3EfwZT-7MfwY0pG4BadQ02ySufI0zi0SsFJroCPed_anr36fUS0NLzAHviPY8iDxfl0Xd7R9OJRODibypyk8rPh9i_qCA5-0B07UZyXfhaDL6EsYIOSdSiJTaHlWztFJKrL-NJZ8ms3j3bmUuwjYZCIYldHLFX"/>
+</div>
+<span class="font-['Plus_Jakarta_Sans'] font-bold text-lg text-[#005344]">14 Shawwal 1446</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-[#735C00] font-bold text-sm tracking-widest uppercase">Ethereal</span>
+<button class="material-symbols-outlined text-[#005344] hover:opacity-80 transition-opacity" data-icon="brightness_high">brightness_high</button>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-2xl mx-auto space-y-10">
+<!-- Hero Section: Your Deen Journey -->
+<section class="relative">
+<div class="flex flex-col space-y-2">
+<h1 class="font-headline font-extrabold text-4xl text-primary leading-tight">Your Deen journey</h1>
+<p class="font-body text-on-surface-variant max-w-[280px]">Reflecting on your spiritual growth and intentional practices.</p>
+</div>
+<!-- Total Stats Asymmetric Layout -->
+<div class="mt-8 flex gap-4">
+<div class="bg-surface-container-low p-6 rounded-[20px] flex-1 flex flex-col justify-between h-32">
+<span class="font-label text-[10px] font-bold uppercase tracking-widest text-primary">Total Prayers</span>
+<span class="font-headline font-bold text-3xl text-on-surface">1,248</span>
+</div>
+<div class="bg-primary text-on-primary p-6 rounded-[20px] flex-1 flex flex-col justify-between h-32 shadow-xl shadow-primary/10">
+<span class="font-label text-[10px] font-bold uppercase tracking-widest text-on-primary-container">Total Duas</span>
+<span class="font-headline font-bold text-3xl">432</span>
+</div>
+</div>
+</section>
+<!-- Prayer Mood Map: Calendar Grid -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<h2 class="font-headline font-bold text-xl text-primary">Prayer Mood Map</h2>
+<span class="font-label text-xs text-on-surface-variant">Last 30 Days</span>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-[20px] shadow-[0_4px_24px_rgba(0,83,68,0.05)]">
+<div class="grid grid-cols-7 gap-2">
+<!-- Generating a colored grid representing moods -->
+<!-- Emerald = High Focus, Rose = Low Focus, Muted Gold = Content -->
+<div class="aspect-square bg-primary/20 rounded-md"></div>
+<div class="aspect-square bg-primary/40 rounded-md"></div>
+<div class="aspect-square bg-primary/80 rounded-md"></div>
+<div class="aspect-square bg-error/30 rounded-md"></div>
+<div class="aspect-square bg-primary/60 rounded-md"></div>
+<div class="aspect-square bg-secondary/40 rounded-md"></div>
+<div class="aspect-square bg-primary/90 rounded-md"></div>
+<div class="aspect-square bg-primary/50 rounded-md"></div>
+<div class="aspect-square bg-primary/70 rounded-md"></div>
+<div class="aspect-square bg-error/20 rounded-md"></div>
+<div class="aspect-square bg-primary/90 rounded-md"></div>
+<div class="aspect-square bg-secondary/60 rounded-md"></div>
+<div class="aspect-square bg-primary/10 rounded-md"></div>
+<div class="aspect-square bg-primary/40 rounded-md"></div>
+<div class="aspect-square bg-primary/80 rounded-md"></div>
+<div class="aspect-square bg-primary/60 rounded-md"></div>
+<div class="aspect-square bg-secondary/30 rounded-md"></div>
+<div class="aspect-square bg-error/40 rounded-md"></div>
+<div class="aspect-square bg-primary/90 rounded-md"></div>
+<div class="aspect-square bg-primary/50 rounded-md"></div>
+<div class="aspect-square bg-primary/70 rounded-md"></div>
+<div class="aspect-square bg-primary/20 rounded-md"></div>
+<div class="aspect-square bg-primary/90 rounded-md"></div>
+<div class="aspect-square bg-secondary/50 rounded-md"></div>
+<div class="aspect-square bg-primary/40 rounded-md"></div>
+<div class="aspect-square bg-primary/80 rounded-md"></div>
+<div class="aspect-square bg-primary/10 rounded-md"></div>
+<div class="aspect-square bg-primary/60 rounded-md"></div>
+</div>
+<div class="mt-4 flex items-center justify-center gap-4">
+<div class="flex items-center gap-1.5">
+<div class="w-2.5 h-2.5 bg-primary rounded-full"></div>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">Focused</span>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="w-2.5 h-2.5 bg-secondary rounded-full"></div>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">Content</span>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="w-2.5 h-2.5 bg-error rounded-full"></div>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">Distracted</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Your Intentions This Week -->
+<section class="space-y-6">
+<h2 class="font-headline font-bold text-xl text-primary">Your Intentions This Week</h2>
+<div class="space-y-4">
+<div class="group flex items-center gap-4 p-4 rounded-[16px] bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="water_drop">water_drop</span>
+</div>
+<div class="flex-1">
+<p class="font-body font-bold text-sm">Perfecting Wudu Focus</p>
+<p class="font-body text-xs text-on-surface-variant">4/7 days completed</p>
+</div>
+<span class="material-symbols-outlined text-primary/40" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="group flex items-center gap-4 p-4 rounded-[16px] bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="volunteer_activism">volunteer_activism</span>
+</div>
+<div class="flex-1">
+<p class="font-body font-bold text-sm">Daily Charity Mindset</p>
+<p class="font-body text-xs text-on-surface-variant">Active intention</p>
+</div>
+<span class="material-symbols-outlined text-primary/40" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Spiritual Milestones: Bento Grid Style -->
+<section class="space-y-6">
+<h2 class="font-headline font-bold text-xl text-primary">Spiritual Milestones</h2>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-high p-5 rounded-[20px] flex flex-col space-y-4">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="wb_twilight">wb_twilight</span>
+<div>
+<p class="font-headline font-bold text-sm">Early Riser</p>
+<div class="mt-2 h-1.5 w-full bg-outline-variant/30 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-3/4 rounded-full"></div>
+</div>
+<p class="mt-2 text-[10px] uppercase font-bold text-on-surface-variant">15/20 Fajr</p>
+</div>
+</div>
+<div class="bg-surface-container-high p-5 rounded-[20px] flex flex-col space-y-4">
+<span class="material-symbols-outlined text-secondary text-3xl" data-icon="anchor">anchor</span>
+<div>
+<p class="font-headline font-bold text-sm">Anchor Found</p>
+<div class="mt-2 h-1.5 w-full bg-outline-variant/30 rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-1/2 rounded-full"></div>
+</div>
+<p class="mt-2 text-[10px] uppercase font-bold text-on-surface-variant">5/10 Istighfar</p>
+</div>
+</div>
+<div class="col-span-2 bg-primary text-on-primary p-6 rounded-[20px] relative overflow-hidden group">
+<div class="relative z-10">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-4xl opacity-80" data-icon="campaign">campaign</span>
+<span class="px-2 py-1 bg-white/20 rounded-lg text-[10px] font-bold uppercase">In Progress</span>
+</div>
+<div class="mt-6">
+<p class="font-headline font-extrabold text-xl">Muadhin</p>
+<p class="text-sm text-on-primary-container mt-1">Calling the family to prayer</p>
+</div>
+</div>
+<!-- Decorative background ray -->
+<div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl transition-transform group-hover:scale-150 duration-700"></div>
+</div>
+</div>
+</section>
+<!-- Zakat Calculator -->
+<section class="pb-12">
+<div class="bg-[#735C00]/5 border border-[#735C00]/10 p-6 rounded-[24px] space-y-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="calculate">calculate</span>
+<h2 class="font-headline font-bold text-lg text-secondary">Zakat Calculator</h2>
+</div>
+<p class="font-body text-sm text-on-surface-variant">Purify your wealth by calculating your mandatory charity contribution.</p>
+<button class="w-full bg-secondary text-on-secondary py-4 rounded-xl font-headline font-bold text-sm tracking-wide shadow-lg shadow-secondary/20 hover:scale-[0.98] transition-transform">Calculate Now</button>
+</div>
+</section>
+</main>
+<!-- Floating Ruhani Button -->
+<button class="fixed bottom-28 right-6 w-16 h-16 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-2xl shadow-2xl shadow-primary/40 flex items-center justify-center z-40 hover:scale-105 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-3xl" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</button>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full px-4 pb-6 pt-3 flex justify-around items-center bg-[#FBF9F4]/90 backdrop-blur-xl z-50 rounded-t-[32px] shadow-[0_-4px_24px_rgba(0,83,68,0.05)]">
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Quran</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome_motion">auto_awesome_motion</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Prayers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Duas</span>
+</a>
+<!-- Active Tab: Profile -->
+<a class="flex flex-col items-center justify-center text-[#005344] bg-[#005344]/10 rounded-2xl px-3 py-1 scale-110 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

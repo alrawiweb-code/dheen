@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Adhan Alert - Dhuhr</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Naskh+Arabic:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#0d1f17",
+                    "on-primary-fixed-variant": "#005142",
+                    "surface-bright": "#fbf9f4",
+                    "error-container": "#ffdad6",
+                    "surface": "#fbf9f4",
+                    "surface-variant": "#e4e2dd",
+                    "inverse-primary": "#85d6c0",
+                    "tertiary-container": "#52655b",
+                    "surface-dim": "#dbdad5",
+                    "outline": "#6f7975",
+                    "secondary-fixed": "#ffe088",
+                    "on-surface-variant": "#3f4945",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f5f3ee",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#0a6b59",
+                    "on-primary-container": "#9aecd5",
+                    "surface-container-high": "#eae8e3",
+                    "primary-fixed-dim": "#85d6c0",
+                    "tertiary": "#3a4d43",
+                    "primary": "#005344",
+                    "on-secondary-container": "#745c00",
+                    "surface-container-highest": "#e4e2dd",
+                    "inverse-on-surface": "#f2f1ec",
+                    "on-tertiary-fixed-variant": "#384b41",
+                    "surface-container": "#f0eee9",
+                    "on-surface": "#1b1c19",
+                    "on-secondary-fixed": "#241a00",
+                    "primary-container": "#0f6d5b",
+                    "primary-fixed": "#a1f2db",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#b6cbbf",
+                    "secondary-fixed-dim": "#e9c349",
+                    "on-primary-fixed": "#002019",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "background": "#fbf9f4",
+                    "secondary-container": "#fed65b",
+                    "on-tertiary-container": "#cce1d4",
+                    "tertiary-fixed": "#d2e8da",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#bec9c4",
+                    "on-background": "#1b1c19",
+                    "inverse-surface": "#30312e",
+                    "on-error": "#ffffff",
+                    "secondary": "#735c00",
+                    "on-secondary-fixed-variant": "#574500"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-adhan-gradient {
+            background: linear-gradient(180deg, #FBF9F4 0%, #0A1F14 40%, #0A1F14 100%);
+        }
+        .ripple {
+            border: 1px solid rgba(133, 214, 192, 0.2);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#0A1F14] font-body text-white overflow-hidden antialiased">
+<!-- Immersive Backdrop -->
+<div class="fixed inset-0 bg-adhan-gradient z-0">
+<!-- Sky Illustration Overlay -->
+<div class="absolute top-0 left-0 w-full h-1/2 opacity-20 pointer-events-none">
+<img alt="Minimalist line art illustration of a mosque silhouette against a warm cream dawn sky" class="w-full h-full object-cover mix-blend-multiply" data-alt="Minimalist line art illustration of a mosque silhouette against a warm cream dawn sky with soft light rays" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVNz_E8ACtnxs2kmTq7WGCS7EffAz4YvyY9X2rxuf049bGmUm9YfA59WTrVeW_t2RdrvHP8rwc2sZE9pdq0-ESAda3IKzuOPVkzCfDqgefuN7yH4dXyuuiJD7lIanzazVmgUvacDNrRGLQhk3VU0eBZ1pJ-A06YaHKVaQHVd0Hk59azhtDjjU5EVDlJz1nbh9gpUIFsxpsSNcT6d3bE7yXxRfeMeRfmX6frxZMoQbXyNBD5iQI60qyVkQy_E4EW3fvrpKnFkwYbJmb"/>
+</div>
+</div>
+<!-- Main Content Canvas -->
+<main class="relative z-10 h-screen flex flex-col items-center justify-between px-8 py-16">
+<!-- Header: Time & Date (Derived from TopAppBar JSON logic but specialized for Alert) -->
+<div class="text-center">
+<span class="font-headline font-bold text-sm tracking-[0.2em] text-secondary-container opacity-80 uppercase mb-2 block">14 Shawwal 1446</span>
+<div class="flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined text-secondary-container text-sm">location_on</span>
+<span class="font-body text-sm font-medium text-surface-container-low opacity-90">London, United Kingdom</span>
+</div>
+</div>
+<!-- Central Soulful Visualization -->
+<div class="relative w-full flex items-center justify-center flex-1">
+<!-- Expanding Rings (Asymmetric Layers) -->
+<div class="ripple w-[240px] h-[240px]"></div>
+<div class="ripple w-[360px] h-[360px] opacity-60"></div>
+<div class="ripple w-[500px] h-[500px] opacity-30"></div>
+<!-- Focal Point: Gold Crescent -->
+<div class="relative z-20 flex flex-col items-center">
+<div class="w-24 h-24 rounded-full bg-gradient-to-tr from-secondary to-secondary-fixed flex items-center justify-center shadow-[0_0_50px_rgba(115,92,0,0.4)] mb-8">
+<span class="material-symbols-outlined text-on-secondary-fixed text-5xl" style="font-variation-settings: 'FILL' 1;">bedtime</span>
+</div>
+<h1 class="font-headline font-extrabold text-7xl tracking-tight text-white mb-2">Dhuhr</h1>
+<p class="font-body text-xl font-light text-primary-fixed-dim/80">Time for Midday Prayer</p>
+<!-- Animated Soundwave Bars (Mockup) -->
+<div class="flex items-end space-x-1.5 h-12 mt-12">
+<div class="w-1 bg-primary-fixed-dim rounded-full h-4 opacity-40"></div>
+<div class="w-1 bg-primary-fixed-dim rounded-full h-8 opacity-60"></div>
+<div class="w-1 bg-primary-fixed-dim rounded-full h-12"></div>
+<div class="w-1 bg-primary-fixed-dim rounded-full h-6 opacity-80"></div>
+<div class="w-1 bg-primary-fixed-dim rounded-full h-10 opacity-70"></div>
+<div class="w-1 bg-primary-fixed-dim rounded-full h-4 opacity-40"></div>
+<div class="w-1 bg-primary-fixed-dim rounded-full h-8 opacity-60"></div>
+</div>
+</div>
+</div>
+<!-- Action Controls -->
+<div class="w-full max-w-sm space-y-6">
+<!-- Primary Action: Mark as Prayed -->
+<button class="w-full py-5 rounded-[20px] bg-gradient-to-r from-primary to-primary-container text-white font-headline font-bold text-lg shadow-[0_20px_40px_-10px_rgba(0,83,68,0.5)] active:scale-95 transition-all duration-200 flex items-center justify-center group">
+<span class="material-symbols-outlined mr-3 transition-transform group-hover:scale-110" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                Mark as Prayed
+            </button>
+<!-- Secondary Actions: Grid for dismissal/snooze -->
+<div class="flex items-center justify-between px-4">
+<button class="flex flex-col items-center space-y-1 opacity-60 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-2xl">snooze</span>
+<span class="font-label text-[10px] font-bold uppercase tracking-widest">Remind Later</span>
+</button>
+<button class="px-8 py-2 font-headline font-semibold text-white/60 hover:text-white transition-colors">
+                    Dismiss
+                </button>
+<button class="flex flex-col items-center space-y-1 opacity-60 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-2xl">volume_off</span>
+<span class="font-label text-[10px] font-bold uppercase tracking-widest">Mute Adhan</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Bottom Aesthetic Detail (Subtle Mosque Silhouette) -->
+<div class="fixed bottom-0 left-0 w-full h-32 z-0 opacity-10 pointer-events-none bg-[url('https://images.unsplash.com/photo-1590076214667-c0f3531682b8?auto=format&amp;fit=crop&amp;q=80&amp;w=1200')] bg-bottom bg-no-repeat bg-contain" data-alt="Faded dark silhouette of grand mosque architecture with minarets at the base of a deep green composition">
+</div>
+</body></html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;family=Noto+Naskh+Arabic:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#0d1f17",
+                    "on-primary-fixed-variant": "#005142",
+                    "surface-bright": "#fbf9f4",
+                    "error-container": "#ffdad6",
+                    "surface": "#fbf9f4",
+                    "surface-variant": "#e4e2dd",
+                    "inverse-primary": "#85d6c0",
+                    "tertiary-container": "#52655b",
+                    "surface-dim": "#dbdad5",
+                    "outline": "#6f7975",
+                    "secondary-fixed": "#ffe088",
+                    "on-surface-variant": "#3f4945",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f5f3ee",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#0a6b59",
+                    "on-primary-container": "#9aecd5",
+                    "surface-container-high": "#eae8e3",
+                    "primary-fixed-dim": "#85d6c0",
+                    "tertiary": "#3a4d43",
+                    "primary": "#005344",
+                    "on-secondary-container": "#745c00",
+                    "surface-container-highest": "#e4e2dd",
+                    "inverse-on-surface": "#f2f1ec",
+                    "on-tertiary-fixed-variant": "#384b41",
+                    "surface-container": "#f0eee9",
+                    "on-surface": "#1b1c19",
+                    "on-secondary-fixed": "#241a00",
+                    "primary-container": "#0f6d5b",
+                    "primary-fixed": "#a1f2db",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#b6cbbf",
+                    "secondary-fixed-dim": "#e9c349",
+                    "on-primary-fixed": "#002019",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "background": "#fbf9f4",
+                    "secondary-container": "#fed65b",
+                    "on-tertiary-container": "#cce1d4",
+                    "tertiary-fixed": "#d2e8da",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#bec9c4",
+                    "on-background": "#1b1c19",
+                    "inverse-surface": "#30312e",
+                    "on-error": "#ffffff",
+                    "secondary": "#735c00",
+                    "on-secondary-fixed-variant": "#574500"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .arabic-text {
+            font-family: 'Noto Naskh Arabic', serif;
+            font-size: 120%;
+        }
+        .glass-panel {
+            background: rgba(251, 249, 244, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface">
+<!-- TopAppBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#FBF9F4]/80 dark:bg-[#1B1C19]/80 backdrop-blur-md shadow-[0_10px_30px_-15px_rgba(0,83,68,0.1)] flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Close up portrait of a calm man with a kind expression in soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6tn-0EdIQieYv5swiCVYObXNzLkMBLaC-jqJjtjZKrp7hOqWkdeDmEv6Mhfly37qrU5SAJuC3RIGC19tnU3lCNo1PVPkFrmUHwh-kikulzOtszpfAO_eLI3xnKplkZgAz1QTkv7_rVZ14H5KxdlCziNLfWsk7xHKCbZaRne1slgJqgULHmAUtrYErsh1iv5Iih9VHxJ3f0X84-gsOvzQsOs5XU57tuUMLs7Ee3N-TWJUIzMfKmB1ZTBVl78uoDZa6dUzD0dAzzyZz"/>
+</div>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold text-lg text-[#005344]">14 Shawwal 1446</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-[#735C00] font-bold text-sm tracking-widest uppercase">Premium</span>
+<button class="material-symbols-outlined text-[#005344] hover:opacity-80 transition-opacity active:scale-95 duration-200">brightness_high</button>
+</div>
+</nav>
+<main class="pt-24 pb-32 px-6 max-w-2xl mx-auto space-y-8">
+<!-- Adhan Reminders Hero Card -->
+<section class="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-primary to-primary-container p-6 text-on-primary shadow-[0_20px_40px_rgba(0,83,68,0.15)]">
+<div class="absolute top-0 right-0 w-32 h-32 opacity-10">
+<span class="material-symbols-outlined text-[120px]" style="font-variation-settings: 'FILL' 1;">mosque</span>
+</div>
+<div class="relative z-10 flex flex-col gap-6">
+<div class="flex justify-between items-start">
+<div>
+<p class="font-label text-[10px] uppercase tracking-[0.2em] opacity-80">Next Prayer</p>
+<h2 class="font-headline text-4xl font-extrabold mt-1">Dhuhr</h2>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-headline text-xl font-bold">12:45 PM</span>
+<span class="text-sm opacity-80">in 2h 15m</span>
+</div>
+</div>
+<!-- Pulsing Crescent Progress -->
+<div class="flex items-center gap-4 py-2">
+<div class="relative w-16 h-16 flex items-center justify-center">
+<div class="absolute inset-0 rounded-full border-4 border-white/20"></div>
+<div class="absolute inset-0 rounded-full border-4 border-white border-t-transparent -rotate-45"></div>
+<span class="material-symbols-outlined text-secondary-container animate-pulse" style="font-variation-settings: 'FILL' 1;">dark_mode</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-lg">Adhan Reminders</h3>
+<p class="text-sm opacity-90 leading-relaxed">Notifications are active for all daily fardh prayers.</p>
+</div>
+<button class="bg-white/10 p-3 rounded-full hover:bg-white/20 transition-all">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Today's Prayers List -->
+<section>
+<div class="flex justify-between items-end mb-6">
+<h2 class="font-headline text-2xl font-bold text-primary">Today's Prayers</h2>
+<span class="font-label text-sm text-outline">April 14, 2024</span>
+</div>
+<div class="space-y-4">
+<!-- Prayer Item: Fajr (Done) -->
+<div class="bg-surface-container-low p-4 rounded-[20px] flex items-center justify-between transition-all hover:translate-y-[-2px]">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">wb_twilight</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Fajr</h4>
+<p class="text-xs text-outline">04:32 AM</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                            Done
+                        </button>
+</div>
+</div>
+<!-- Prayer Item: Dhuhr (Upcoming) -->
+<div class="bg-surface-container-highest p-4 rounded-[20px] flex items-center justify-between ring-2 ring-primary/20">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">wb_sunny</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Dhuhr</h4>
+<p class="text-xs text-outline">12:45 PM</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="p-2 rounded-xl text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">radio_button_unchecked</span>
+</button>
+<button class="p-2 rounded-xl text-outline-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined">cancel</span>
+</button>
+</div>
+</div>
+<!-- Prayer Item: Asr -->
+<div class="bg-surface-container-low p-4 rounded-[20px] flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center text-outline">
+<span class="material-symbols-outlined">wb_cloudy</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Asr</h4>
+<p class="text-xs text-outline">04:12 PM</p>
+</div>
+</div>
+<div class="flex gap-2 text-outline-variant">
+<span class="material-symbols-outlined">hourglass_top</span>
+</div>
+</div>
+<!-- Prayer Item: Maghrib -->
+<div class="bg-surface-container-low p-4 rounded-[20px] flex items-center justify-between opacity-60">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center text-outline">
+<span class="material-symbols-outlined">bedtime</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Maghrib</h4>
+<p class="text-xs text-outline">06:58 PM</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant">lock</span>
+</div>
+</div>
+</section>
+<!-- Qibla Direction Bento Card -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-low rounded-[20px] p-6 flex flex-col justify-between overflow-hidden relative">
+<div class="absolute -right-12 -bottom-12 w-48 h-48 rounded-full border-[1px] border-primary/5"></div>
+<div class="absolute -right-8 -bottom-8 w-32 h-32 rounded-full border-[1px] border-primary/10"></div>
+<div class="relative z-10">
+<h3 class="font-headline text-xl font-bold text-primary mb-2">Qibla Direction</h3>
+<p class="text-sm text-outline-variant max-w-[160px]">Find the direction of the Holy Kaaba from your current location.</p>
+</div>
+<div class="mt-8 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-2xl font-bold text-secondary">292° NW</span>
+<span class="text-xs text-outline font-medium">Mecca, SA</span>
+</div>
+<div class="w-20 h-20 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center border-2 border-primary/5">
+<div class="w-16 h-16 rounded-full border border-dashed border-primary/20 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-primary text-3xl rotate-[292deg]" style="font-variation-settings: 'FILL' 1;">navigation</span>
+<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-error rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Compass Preview Map Card -->
+<div class="rounded-[20px] h-full min-h-[180px] relative overflow-hidden group">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Stylized architectural detail of a geometric Islamic mosaic pattern with deep green and gold tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-RX-OCvGUX8hWpWC1XSpfyXZuYvuhKz6YVspHTHgo5s3trPXyAYxyoCySL7sOolgq9bQNBOrBKso-wUbWtPcNG3fn8eMdlMrK5n36Bw7oXQHCULbiX0OabttskcPkKu5VX0ARrylH2n3wRKNDPqEeuoToU6d2ZW7PsHnCfSR1-0plmN0zzqzUZJPanMTpeGeQLzw_MxnttDHvcrvFJ-WKsnntl4lmg3UAsbiI1teujzZBi2u5tCbU30FWwyWTzxWk7HA-xIxiVfAx"/>
+<div class="absolute inset-0 bg-primary/40 backdrop-blur-[2px]"></div>
+<div class="relative h-full p-6 flex flex-col justify-end">
+<button class="bg-surface-container-lowest text-primary px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 w-full shadow-lg">
+<span class="material-symbols-outlined text-sm">explore</span>
+                        Open Full Compass
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Ruhani AI Button -->
+<button class="fixed bottom-28 right-6 w-14 h-14 bg-gradient-to-tr from-secondary to-on-secondary-container text-on-secondary rounded-2xl shadow-[0_12px_24px_rgba(115,92,0,0.3)] flex items-center justify-center active:scale-95 transition-transform z-40">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full px-4 pb-6 pt-3 flex justify-around items-center bg-[#FBF9F4]/90 dark:bg-[#1B1C19]/90 backdrop-blur-xl z-50 rounded-t-[32px] shadow-[0_-4px_24px_rgba(0,83,68,0.05)]">
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 dark:text-[#FBF9F4]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 dark:text-[#FBF9F4]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Quran</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#005344] dark:text-[#0F6D5B] bg-[#005344]/10 rounded-2xl px-4 py-2 active:scale-110 duration-300" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome_motion</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Prayers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 dark:text-[#FBF9F4]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined">auto_stories</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Duas</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1B1C19]/40 dark:text-[#FBF9F4]/40 hover:text-[#005344] transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-['Manrope'] text-[10px] font-semibold uppercase tracking-wider mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

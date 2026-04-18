@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deen – Digital Sanctuary</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Plus+Jakarta+Sans:wght@300..800&family=Noto+Naskh+Arabic:wght@400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; background: #F8F4E8; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+    .prayer-pulse { animation: pulse 2s ease-in-out infinite; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+    .hover-scale { transition: transform 0.2s; }
+    .hover-scale:hover { transform: scale(1.05); }
+    .hover-translate:hover { transform: translateX(4px); }
+    a { text-decoration: none; }
+    button { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const COLORS = {
+      primary: "#005344",
+      primaryContainer: "#0f6d5b",
+      primaryFixed: "#a1f2db",
+      secondary: "#735c00",
+      secondaryContainer: "#fed65b",
+      surface: "#fbf9f4",
+      surfaceContainerLow: "#f5f3ee",
+      surfaceContainerLowest: "#ffffff",
+      outlineVariant: "#bec9c4",
+      outline: "#6f7975",
+      onSurface: "#1b1c19",
+      gold: "#D4AF37",
+    };
+
+    const MaterialIcon = ({ name, filled = false, size = 24, color = COLORS.primary, style = {} }) => (
+      <span
+        style={{
+          fontFamily: "Material Symbols Outlined",
+          fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 300, 'GRAD' 0, 'opsz' ${size}`,
+          fontSize: size,
+          color,
+          userSelect: "none",
+          lineHeight: 1,
+          display: "inline-block",
+          ...style,
+        }}
+      >
+        {name}
+      </span>
+    );
+
+    function DeenHome() {
+      const [currentTime, setCurrentTime] = useState(new Date());
+      const [activeTab, setActiveTab] = useState("Home");
+
+      useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const prayers = [
+        { name: "FAJR", status: "done" },
+        { name: "DHUHR", status: "active" },
+        { name: "ASR", status: "pending" },
+        { name: "MAGHRIB", status: "pending" },
+        { name: "ISHA", status: "pending" },
+      ];
+
+      const navItems = [
+        { icon: "home", label: "Home" },
+        { icon: "menu_book", label: "Quran" },
+        { icon: "schedule", label: "Prayers" },
+        { icon: "auto_awesome", label: "Duas" },
+        { icon: "self_improvement", label: "Sukoon" },
+        { icon: "person", label: "Profile" },
+      ];
+
+      const quickActions = [
+        { icon: "menu_book", label: "Quran" },
+        { icon: "auto_awesome", label: "Duas" },
+        { icon: "explore", label: "Qibla" },
+        { icon: "calendar_today", label: "Tracker" },
+      ];
+
+      return (
+        <div
+          style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            background: "#F8F4E8",
+            minHeight: "100vh",
+            maxWidth: 480,
+            margin: "0 auto",
+            position: "relative",
+            paddingBottom: 120,
+          }}
+        >
+          {/* Top App Bar */}
+          <header
+            style={{
+              position: "fixed",
+              top: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "100%",
+              maxWidth: 480,
+              zIndex: 50,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "16px 24px",
+              background: "rgba(248,246,241,0.88)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              boxShadow: "0 4px 24px rgba(15,109,91,0.08)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <MaterialIcon name="menu" color={COLORS.primaryContainer} size={24} />
+              <span
+                style={{
+                  fontFamily: "Manrope, sans-serif",
+                  fontSize: 24,
+                  fontWeight: 800,
+                  color: COLORS.primaryContainer,
+                  letterSpacing: "-0.5px",
+                }}
+              >
+                Deen
+              </span>
+            </div>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.gold,
+                background: "rgba(212,175,55,0.1)",
+                padding: "4px 12px",
+                borderRadius: 100,
+                border: `1px solid rgba(212,175,55,0.25)`,
+              }}
+            >
+              14 Ramadan 1445
+            </span>
+          </header>
+
+          {/* Main Content */}
+          <main style={{ paddingTop: 80, padding: "80px 24px 16px", display: "flex", flexDirection: "column", gap: 24 }}>
+
+            {/* Welcome Hero */}
+            <section
+              className="fade-in"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            >
+              <div>
+                <h2
+                  style={{
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: 28,
+                    fontWeight: 300,
+                    color: COLORS.primary,
+                    margin: 0,
+                    letterSpacing: "-0.5px",
+                  }}
+                >
+                  Assalamu alaikum,
+                </h2>
+                <p
+                  style={{
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: COLORS.primary,
+                    margin: "4px 0 0",
+                  }}
+                >
+                  Abdullah
+                </p>
+              </div>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 18,
+                  overflow: "hidden",
+                  boxShadow: "0 0 0 4px white, 0 2px 8px rgba(0,0,0,0.1)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: "linear-gradient(135deg, #0f6d5b, #005344)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: 22,
+                    fontFamily: "Manrope, sans-serif",
+                  }}
+                >
+                  A
+                </div>
+              </div>
+            </section>
+
+            {/* Niyyah Strip */}
+            <div
+              className="hover-scale"
+              style={{
+                background: COLORS.surfaceContainerLowest,
+                borderRadius: 18,
+                padding: "18px 20px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                boxShadow: "0 2px 12px rgba(0,83,68,0.07)",
+                border: `1px solid rgba(190,201,196,0.3)`,
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    background: COLORS.primaryFixed,
+                    borderRadius: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MaterialIcon name="auto_awesome" color={COLORS.primary} size={22} />
+                </div>
+                <span style={{ fontWeight: 500, color: COLORS.primary, fontSize: 14 }}>
+                  Set your intention for today
+                </span>
+              </div>
+              <MaterialIcon name="arrow_forward" color={COLORS.outline} size={20} />
+            </div>
+
+            {/* Next Prayer Card */}
+            <section
+              style={{
+                position: "relative",
+                borderRadius: 32,
+                overflow: "hidden",
+                padding: "32px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                gap: 24,
+                background: "linear-gradient(160deg, #F8F4E8 0%, #EDD97A 60%, #D4AF37 100%)",
+                boxShadow: "0 20px 60px rgba(212,175,55,0.28), 0 4px 16px rgba(212,175,55,0.15)",
+              }}
+            >
+              {/* Decorative circle */}
+              <div style={{
+                position: "absolute", top: -40, right: -40,
+                width: 200, height: 200,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.18)",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                position: "absolute", bottom: -20, left: -20,
+                width: 120, height: 120,
+                borderRadius: "50%",
+                background: "rgba(0,83,68,0.06)",
+                pointerEvents: "none",
+              }} />
+
+              <div style={{ position: "relative", zIndex: 2 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    opacity: 0.65,
+                    color: COLORS.onSurface,
+                    margin: 0,
+                  }}
+                >
+                  Next Prayer
+                </p>
+                <h3
+                  style={{
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: 46,
+                    fontWeight: 800,
+                    color: COLORS.onSurface,
+                    margin: "4px 0 0",
+                    letterSpacing: "-1px",
+                  }}
+                >
+                  Dhuhr
+                </h3>
+              </div>
+
+              <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: 8 }}>
+                <span
+                  style={{
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: 52,
+                    fontWeight: 300,
+                    color: COLORS.onSurface,
+                    letterSpacing: "-2px",
+                    lineHeight: 1,
+                  }}
+                >
+                  02:15 PM
+                </span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: "rgba(255,255,255,0.45)",
+                    backdropFilter: "blur(10px)",
+                    WebkitBackdropFilter: "blur(10px)",
+                    width: "fit-content",
+                    padding: "5px 14px",
+                    borderRadius: 100,
+                    color: COLORS.onSurface,
+                    border: "1px solid rgba(255,255,255,0.6)",
+                  }}
+                >
+                  1h 22m away
+                </span>
+              </div>
+
+              <div style={{ position: "relative", zIndex: 2 }}>
+                <button
+                  style={{
+                    background: COLORS.primary,
+                    color: "white",
+                    border: "none",
+                    padding: "15px 28px",
+                    borderRadius: 16,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "all 0.2s",
+                    boxShadow: "0 4px 16px rgba(0,83,68,0.35)",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#0f6d5b"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = COLORS.primary; e.currentTarget.style.transform = "translateY(0)"; }}
+                >
+                  <MaterialIcon name="notifications_active" color="white" size={18} />
+                  Set Reminder
+                </button>
+              </div>
+            </section>
+
+            {/* Quick Actions Row */}
+            <nav style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+              {quickActions.map(({ icon, label }) => (
+                <div
+                  key={label}
+                  className="hover-scale"
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer" }}
+                >
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      background: COLORS.surfaceContainerLowest,
+                      borderRadius: 18,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 12px rgba(0,83,68,0.08)",
+                      border: `1px solid rgba(190,201,196,0.2)`,
+                    }}
+                  >
+                    <MaterialIcon name={icon} color={COLORS.primary} size={28} />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: COLORS.outline,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </nav>
+
+            {/* Habit Tracker */}
+            <section
+              style={{
+                background: COLORS.surfaceContainerLow,
+                borderRadius: 24,
+                padding: 24,
+                boxShadow: "0 2px 12px rgba(0,83,68,0.05)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
+                <div>
+                  <h4
+                    style={{
+                      fontFamily: "Manrope, sans-serif",
+                      fontWeight: 700,
+                      color: COLORS.primary,
+                      margin: 0,
+                      fontSize: 16,
+                    }}
+                  >
+                    Spiritual Habit Tracker
+                  </h4>
+                  <p style={{ fontSize: 12, color: COLORS.outline, margin: "4px 0 0" }}>
+                    You've completed 1/5 prayers
+                  </p>
+                </div>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: COLORS.secondary,
+                    cursor: "pointer",
+                    padding: "4px 12px",
+                    background: "rgba(115,92,0,0.08)",
+                    borderRadius: 100,
+                  }}
+                >
+                  View Details
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px" }}>
+                {prayers.map(({ name, status }) => (
+                  <div
+                    key={name}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 10,
+                      opacity: status === "pending" ? 0.35 : 1,
+                      transition: "opacity 0.3s",
+                    }}
+                  >
+                    {status === "done" && (
+                      <div
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: "50%",
+                          border: `3px solid ${COLORS.primary}`,
+                          background: COLORS.primaryFixed,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <MaterialIcon name="check" color={COLORS.primary} size={22} filled />
+                      </div>
+                    )}
+                    {status === "active" && (
+                      <div
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: "50%",
+                          border: `3px solid ${COLORS.secondaryContainer}`,
+                          background: "white",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: `0 0 0 6px ${COLORS.secondaryContainer}40`,
+                        }}
+                      >
+                        <div
+                          className="prayer-pulse"
+                          style={{
+                            width: 14,
+                            height: 14,
+                            background: COLORS.secondaryContainer,
+                            borderRadius: "50%",
+                          }}
+                        />
+                      </div>
+                    )}
+                    {status === "pending" && (
+                      <div
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: "50%",
+                          border: `2px solid ${COLORS.outlineVariant}`,
+                          background: "white",
+                        }}
+                      />
+                    )}
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: status === "active" ? COLORS.secondary : status === "done" ? COLORS.primary : COLORS.outline,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Daily Ayah Card */}
+            <section
+              style={{
+                background: COLORS.surfaceContainerLowest,
+                borderRadius: 28,
+                padding: 28,
+                border: `1px solid rgba(190,201,196,0.2)`,
+                boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <MaterialIcon name="star" color={COLORS.gold} size={20} filled />
+                <h4
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: COLORS.gold,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                  }}
+                >
+                  Ayah of the Day
+                </h4>
+              </div>
+              <p
+                style={{
+                  textAlign: "right",
+                  fontFamily: "Noto Naskh Arabic, serif",
+                  fontSize: 28,
+                  lineHeight: 1.9,
+                  color: COLORS.primary,
+                  direction: "rtl",
+                  margin: 0,
+                }}
+              >
+                إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ
+              </p>
+              <p
+                style={{
+                  fontSize: 16,
+                  fontWeight: 500,
+                  fontStyle: "italic",
+                  color: COLORS.onSurface,
+                  lineHeight: 1.65,
+                  borderLeft: `3px solid ${COLORS.secondaryContainer}`,
+                  paddingLeft: 16,
+                  margin: 0,
+                }}
+              >
+                "You alone we worship and You alone we ask for help."
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: COLORS.outline,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  margin: 0,
+                }}
+              >
+                — Al-Fatiha 1:5
+              </p>
+            </section>
+
+            {/* Ayah of My Life */}
+            <section
+              style={{
+                position: "relative",
+                height: 220,
+                borderRadius: 28,
+                overflow: "hidden",
+                cursor: "pointer",
+                background: "linear-gradient(135deg, #1a1a0e 0%, #2d2510 50%, #1a1205 100%)",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: `radial-gradient(ellipse at 30% 50%, rgba(212,175,55,0.18) 0%, transparent 60%), 
+                    radial-gradient(ellipse at 80% 20%, rgba(212,175,55,0.1) 0%, transparent 50%)`,
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.15) 60%, transparent 100%)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-end",
+                  padding: 28,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <MaterialIcon name="format_quote" color={COLORS.gold} size={18} filled />
+                </div>
+                <h4
+                  style={{
+                    color: "white",
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: 22,
+                    fontWeight: 700,
+                    margin: "0 0 6px",
+                  }}
+                >
+                  Ayah of My Life
+                </h4>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                  Reflect on the verse that resonates with your soul.
+                </p>
+              </div>
+            </section>
+
+          </main>
+
+          {/* Floating Pill Button */}
+          <div
+            style={{
+              position: "fixed",
+              bottom: 96,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 50,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <button
+              style={{
+                background: "white",
+                border: `2px solid ${COLORS.primaryContainer}`,
+                color: COLORS.secondary,
+                fontWeight: 700,
+                padding: "12px 24px",
+                borderRadius: 100,
+                boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                fontSize: 14,
+                transition: "transform 0.2s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+              onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+              onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"}
+              onMouseUp={e => e.currentTarget.style.transform = "scale(1.05)"}
+            >
+              <MaterialIcon name="timer" color={COLORS.primaryContainer} size={20} />
+              One Minute for Allah
+            </button>
+          </div>
+
+          {/* Bottom Nav */}
+          <nav
+            style={{
+              position: "fixed",
+              bottom: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "100%",
+              maxWidth: 480,
+              zIndex: 50,
+              display: "flex",
+              justifyContent: "space-around",
+              alignItems: "center",
+              paddingBottom: 20,
+              paddingTop: 8,
+              background: "rgba(255,255,255,0.78)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              height: 80,
+              borderRadius: "24px 24px 0 0",
+              boxShadow: "0 -4px 24px rgba(0,83,68,0.08)",
+            }}
+          >
+            {navItems.map(({ icon, label }) => {
+              const active = activeTab === label;
+              return (
+                <a
+                  key={label}
+                  href="#"
+                  onClick={e => { e.preventDefault(); setActiveTab(label); }}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: active ? COLORS.primaryContainer : "#8a9490",
+                    textDecoration: "none",
+                    padding: "4px 6px",
+                    borderRadius: 12,
+                    gap: 2,
+                    transition: "all 0.2s",
+                    background: active ? "rgba(15,109,91,0.08)" : "transparent",
+                    minWidth: 52,
+                  }}
+                >
+                  <MaterialIcon
+                    name={icon}
+                    color={active ? COLORS.primaryContainer : "#8a9490"}
+                    size={22}
+                    filled={active}
+                  />
+                  <span
+                    style={{
+                      fontSize: 9,
+                      fontWeight: active ? 700 : 500,
+                      letterSpacing: "0.04em",
+                      color: active ? COLORS.primaryContainer : "#8a9490",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {label}
+                  </span>
+                  {active && (
+                    <div
+                      style={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        background: COLORS.gold,
+                        marginTop: 1,
+                      }}
+                    />
+                  )}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DeenHome />);
+  </script>
+</body>
+</html>
