@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, Spacing, BorderRadius, Shadows, DhikrOptions } from '../theme';
 import { DAILY_AYAHS } from '../services/quranApi';
+import { useAppStore } from '../store/useAppStore';
 import { HapticButton } from '../components/HapticButton';
 import * as Haptics from 'expo-haptics';
 
@@ -28,6 +29,7 @@ const DUA = 'اللَّهُمَّ اجْعَلْنَا مِنَ الَّذِين
 const DUA_TRANS = 'O Allah, make us of those who hear the word and follow the best of it.';
 
 export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation }) => {
+  const { incrementMilestone } = useAppStore();
   const [phase, setPhase] = useState<Phase>('ayah');
   const [seconds, setSeconds] = useState(60);
   const [running, setRunning] = useState(false);
@@ -45,6 +47,7 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
         if (next <= 0) {
           clearInterval(interval);
           setPhase('complete');
+          incrementMilestone('sukoonCount');
           setRunning(false);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           return 0;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,28 +7,46 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import { HijriDateBadge } from '../components/HijriDateBadge';
 import { Colors, Typography, NativeSpacing as Spacing, BorderRadius, Shadows, PrayerIcons } from '../theme';
 import { useAppStore } from '../store/useAppStore';
-import { getNextPrayer, formatTime, FALLBACK_TIMES } from '../services/prayerTimes';
+import { getNextPrayer, formatTime, fetchPrayerTimes, FALLBACK_TIMES, FALLBACK_HIJRI } from '../services/prayerTimes';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-const PRAYERS = [
-  { id: 'Fajr', icon: 'wb-twilight', time: '04:32 AM', status: 'done' },
-  { id: 'Dhuhr', icon: 'wb-sunny', time: '12:45 PM', status: 'upcoming' },
-  { id: 'Asr', icon: 'wb-cloudy', time: '04:12 PM', status: 'pending' },
-  { id: 'Maghrib', icon: 'bedtime', time: '06:58 PM', status: 'locked' },
-  { id: 'Isha', icon: 'nights-stay', time: '08:30 PM', status: 'locked' },
-];
+const PRAYERS_META = [
+  { id: 'Fajr', icon: 'wb-twilight' },
+  { id: 'Dhuhr', icon: 'wb-sunny' },
+  { id: 'Asr', icon: 'wb-cloudy' },
+  { id: 'Maghrib', icon: 'bedtime' },
+  { id: 'Isha', icon: 'nights-stay' },
+] as const;
 
 export const PrayersScreen = () => {
   const navigation = useNavigation<any>();
-  const { profile } = useAppStore();
-  const nextPrayer = getNextPrayer(FALLBACK_TIMES);
+  const { profile, prayerStatuses, setPrayerStatus } = useAppStore();
+  const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
+  const [hijri, setHijri] = useState(FALLBACK_HIJRI);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTimes = async () => {
+      const lat = profile.latitude || 25.2048;
+      const lng = profile.longitude || 55.2708;
+      const data = await fetchPrayerTimes(lat, lng);
+      setPrayerTimes(data.times);
+      setHijri(data.hijri);
+      setLoading(false);
+    };
+    fetchTimes();
+  }, [profile.latitude, profile.longitude]);
+
+  const nextPrayer = getNextPrayer(prayerTimes);
 
   return (
     <View style={styles.container}>
@@ -39,11 +57,9 @@ export const PrayersScreen = () => {
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{profile?.name?.[0]?.toUpperCase() || 'A'}</Text>
             </View>
-            <Text style={styles.dateText}>14 Shawwal 1446</Text>
           </View>
           <View style={styles.headerRight}>
-            <Text style={styles.premiumText}>PREMIUM</Text>
-            <MaterialIcons name="brightness-5" size={24} color={Colors.primary} />
+            <HijriDateBadge hijri={hijri} />
           </View>
         </View>
 
@@ -64,11 +80,11 @@ export const PrayersScreen = () => {
             <View style={styles.heroTopRow}>
               <View>
                 <Text style={styles.heroLabel}>NEXT PRAYER</Text>
-                <Text style={styles.heroTitle}>Dhuhr</Text>
+                <Text style={styles.heroTitle}>{nextPrayer.next}</Text>
               </View>
               <View style={styles.heroTimeBlock}>
-                <Text style={styles.heroTimeText}>12:45 PM</Text>
-                <Text style={styles.heroTimeSub}>in 2h 15m</Text>
+                <Text style={styles.heroTimeText}>{formatTime(nextPrayer.nextTime)}</Text>
+                <Text style={styles.heroTimeSub}>{nextPrayer.isNext ? 'Upcoming' : ''}</Text>
               </View>
             </View>
             
@@ -91,13 +107,29 @@ export const PrayersScreen = () => {
         {/* Today's Prayers List */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Today's Prayers</Text>
-          <Text style={styles.sectionDateLabel}>April 14, 2024</Text>
+          {loading ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : (
+            <Text style={styles.sectionDateLabel}>{prayerTimes.date}</Text>
+          )}
         </View>
 
         <View style={styles.listContainer}>
-          {PRAYERS.map((prayer) => {
-            const isUpcoming = prayer.status === 'upcoming';
-            const isDone = prayer.status === 'done';
+          {PRAYERS_META.map((prayer) => {
+            const timeStr = prayerTimes[prayer.id as keyof typeof prayerTimes] as string;
+            const status = prayerStatuses[prayer.id];
+            
+            let displayStatus = status === 'done' ? 'done' : 'locked';
+            if (status !== 'done') {
+               if (nextPrayer.next === prayer.id) {
+                 displayStatus = 'upcoming';
+               } else {
+                 displayStatus = 'pending';
+               }
+            }
+
+            const isUpcoming = displayStatus === 'upcoming';
+            const isDone = displayStatus === 'done';
             
             return (
               <View 
@@ -105,7 +137,7 @@ export const PrayersScreen = () => {
                 style={[
                   styles.prayerItem,
                   isUpcoming && styles.prayerItemUpcoming,
-                  prayer.status === 'locked' && { opacity: 0.6 }
+                  displayStatus === 'locked' && { opacity: 0.6 }
                 ]}
               >
                 <View style={styles.prayerItemLeft}>
@@ -114,7 +146,7 @@ export const PrayersScreen = () => {
                   </View>
                   <View>
                     <Text style={styles.prayerName}>{prayer.id}</Text>
-                    <Text style={styles.prayerTime}>{prayer.time}</Text>
+                    <Text style={styles.prayerTime}>{formatTime(timeStr)}</Text>
                   </View>
                 </View>
                 
@@ -126,15 +158,10 @@ export const PrayersScreen = () => {
                     </View>
                   ) : isUpcoming ? (
                     <View style={styles.actionTokens}>
-                      <TouchableOpacity>
+                      <TouchableOpacity onPress={() => setPrayerStatus(prayer.id as any, 'done')}>
                         <MaterialIcons name="radio-button-unchecked" size={24} color={Colors.textMuted} />
                       </TouchableOpacity>
-                      <TouchableOpacity>
-                        <MaterialIcons name="cancel" size={24} color={Colors.prayerMissed} />
-                      </TouchableOpacity>
                     </View>
-                  ) : prayer.status === 'locked' ? (
-                    <MaterialIcons name="lock" size={20} color={Colors.textMuted} />
                   ) : (
                     <MaterialIcons name="hourglass-top" size={20} color={Colors.textMuted} />
                   )}
@@ -171,11 +198,10 @@ export const PrayersScreen = () => {
           
           {/* Compass Map Card */}
           <View style={styles.mapWidget}>
-            <Image 
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC-RX-OCvGUX8hWpWC1XSpfyXZuYvuhKz6YVspHTHgo5s3trPXyAYxyoCySL7sOolgq9bQNBOrBKso-wUbWtPcNG3fn8eMdlMrK5n36Bw7oXQHCULbiX0OabttskcPkKu5VX0ARrylH2n3wRKNDPqEeuoToU6d2ZW7PsHnCfSR1-0plmN0zzqzUZJPanMTpeGeQLzw_MxnttDHvcrvFJ-WKsnntl4lmg3UAsbiI1teujzZBi2u5tCbU30FWwyWTzxWk7HA-xIxiVfAx' }} 
-              style={StyleSheet.absoluteFillObject} 
+            <LinearGradient
+              colors={['#005344', '#0F6D5B']}
+              style={StyleSheet.absoluteFillObject}
             />
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,109,91,0.4)' }]} />
             
             <TouchableOpacity style={styles.fullCompassBtn} onPress={() => navigation.navigate('Qibla')}>
               <MaterialIcons name="explore" size={20} color={Colors.primary} />
@@ -187,17 +213,7 @@ export const PrayersScreen = () => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Ruhani FAB */}
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={() => navigation.navigate('Ruhani')}
-      >
-        <LinearGradient 
-          colors={['#745c00', '#ffe088']} 
-          style={StyleSheet.absoluteFillObject} 
-        />
-        <MaterialIcons name="auto-awesome" size={28} color={Colors.textDark} />
-      </TouchableOpacity>
+
     </View>
   );
 };

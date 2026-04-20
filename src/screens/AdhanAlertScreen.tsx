@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import * as Notifications from 'expo-notifications';
 import {
   View,
   Text,
@@ -13,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { useAppStore } from '../store/useAppStore';
 import { HapticButton } from '../components/HapticButton';
+import { playAdhan, stopAdhan } from '../services/adhanManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,12 +43,8 @@ const PRAYER_DESCRIPTIONS: Record<PrayerKey, { emoji: string; arabic: string; il
   Isha: { emoji: '🌙', arabic: 'العشاء', illustration: '🌃' },
 };
 
-export const AdhanAlertScreen: React.FC<AdhanAlertProps> = ({
-  prayer,
-  time,
-  onPrayed,
-  onDismiss,
-}) => {
+export const AdhanAlertScreen = ({ route, navigation }: any) => {
+  const { prayer, time } = route.params || { prayer: 'Fajr', time: '05:00 AM' };
   const fadeIn = useRef(new Animated.Value(0)).current;
   const crescentScale = useRef(new Animated.Value(0.5)).current;
   const ring1 = useRef(new Animated.Value(0)).current;
@@ -61,10 +59,14 @@ export const AdhanAlertScreen: React.FC<AdhanAlertProps> = ({
   const { adhanSettings, setPrayerStatus } = useAppStore();
   const fajrPhrase = prayer === 'Fajr' && adhanSettings.prayers.Fajr.fajrPhrase;
 
-  const gradColors = PRAYER_GRADIENTS[prayer];
-  const prayerInfo = PRAYER_DESCRIPTIONS[prayer];
+  const currentPrayer = (prayer as PrayerKey) || 'Fajr';
+  const gradColors = PRAYER_GRADIENTS[currentPrayer];
+  const prayerInfo = PRAYER_DESCRIPTIONS[currentPrayer];
 
   useEffect(() => {
+    // Play Adhan
+    playAdhan(adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah');
+
     // Fire haptics
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 300);
@@ -104,10 +106,29 @@ export const AdhanAlertScreen: React.FC<AdhanAlertProps> = ({
     animateWave(wave5, 0.4, 1, 380);
   }, []);
 
-  const handlePrayed = () => {
-    setPrayerStatus(prayer, 'done');
+  const handlePrayed = async () => {
+    setPrayerStatus(prayer as PrayerKey, 'done');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onPrayed();
+    await stopAdhan();
+    navigation.goBack();
+  };
+
+  const handleDismiss = async () => {
+    await stopAdhan();
+    navigation.goBack();
+  };
+
+  const handleSnooze = async () => {
+    await stopAdhan();
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${prayer} Prayer Reminder`,
+        body: `Your snoozed ${prayer} prayer reminder`,
+        data: { intent: 'play_adhan', prayer, voiceKey: adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah', alertType: 'beep' },
+      },
+      trigger: { seconds: 300 }, // 5 minutes
+    });
+    navigation.goBack();
   };
 
   return (
@@ -170,7 +191,9 @@ export const AdhanAlertScreen: React.FC<AdhanAlertProps> = ({
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Text style={styles.snoozeText}>Remind me in 5 min</Text>
+        <TouchableOpacity onPress={handleSnooze}>
+          <Text style={styles.snoozeText}>Remind me in 5 min</Text>
+        </TouchableOpacity>
 
         <HapticButton onPress={handlePrayed} style={styles.prayedBtn} hapticType="heavy">
           <LinearGradient colors={['#0F6D5B', '#0A4A3A']} style={styles.prayedBtnGradient}>
@@ -178,8 +201,8 @@ export const AdhanAlertScreen: React.FC<AdhanAlertProps> = ({
           </LinearGradient>
         </HapticButton>
 
-        <TouchableOpacity onPress={onDismiss} style={styles.dismissBtn}>
-          <Text style={styles.dismissText}>Dismiss</Text>
+        <TouchableOpacity onPress={handleDismiss} style={styles.dismissBtn}>
+          <Text style={styles.dismissText}>Stop & Dismiss</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>

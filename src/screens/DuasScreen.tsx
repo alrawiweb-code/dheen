@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -17,30 +18,45 @@ const CATEGORIES = ['Morning', 'Evening', 'After Salah', 'Travel'];
 const DUAS = [
   {
     id: '01',
-    category: 'Morning Dhikr',
-    arabic: 'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لاَ إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لاَ شَرِيكَ لَهُ',
-    translation: '"We have reached the morning and at this very time unto Allah belongs all sovereignty, and all praise is for Allah. None has the right to be worshipped but Allah alone, without partner."',
+    category: 'Morning',
+    arabic: 'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ...',
+    translation: '"We have reached the morning and at this very time unto Allah belongs all sovereignty..."',
     variant: 'default',
   },
   {
     id: '02',
-    category: 'Protection',
-    arabic: 'بِسْمِ اللَّهِ الَّذِي لاَ يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الأَرْضِ وَلاَ فِي السَّمَاءِ',
-    translation: '"In the Name of Allah with Whose Name there is protection against every kind of harm in the earth or in the heaven."',
+    category: 'Morning',
+    arabic: 'بِسْمِ اللَّهِ الَّذِي لاَ يَضُرُّ مَعَ اسْمِهِ شَيْءٌ...',
+    translation: '"In the Name of Allah with Whose Name there is protection against every kind of harm..."',
     variant: 'soft',
   },
   {
     id: '03',
-    category: 'Gratitude',
-    arabic: 'الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ',
-    translation: '"Praise is to Allah Who gives us life after He has caused us to die and to Him is the return."',
+    category: 'Evening',
+    arabic: 'الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا...',
+    translation: '"Praise is to Allah Who gives us life after He has caused us to die..."',
     variant: 'outlined',
+  },
+  {
+    id: '04',
+    category: 'After Salah',
+    arabic: 'سُبْحَانَ اللَّهِ (٣٣) وَالْحَمْدُ لِلَّهِ (٣٣) وَاللَّهُ أَكْبَرُ (٣٤)',
+    translation: 'SubhanAllah 33 times, Alhamdulillah 33 times, Allahu Akbar 34 times.',
+    variant: 'default',
+  },
+  {
+    id: '05',
+    category: 'Travel',
+    arabic: 'اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى',
+    translation: '"O Allah, we ask You on this our journey for goodness and piety..."',
+    variant: 'soft',
   },
 ];
 
 export const DuasScreen = ({ navigation }: any) => {
   const { profile } = useAppStore();
   const [activeCategory, setActiveCategory] = useState('Morning');
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
     <View style={styles.container}>
@@ -50,7 +66,7 @@ export const DuasScreen = ({ navigation }: any) => {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{profile?.name?.[0]?.toUpperCase() || 'A'}</Text>
           </View>
-          <Text style={styles.dateText}>14 SHAWWAL 1446</Text>
+          <Text style={styles.dateText}>{profile?.name || 'Friend'}</Text>
         </View>
         <TouchableOpacity style={styles.headerRight}>
           <MaterialIcons name="brightness-5" size={24} color={Colors.primary} />
@@ -62,6 +78,27 @@ export const DuasScreen = ({ navigation }: any) => {
         <View style={styles.titleSection}>
           <Text style={styles.pageTitle}>Supplications</Text>
           <Text style={styles.pageSubtitle}>Daily remembrance for spiritual peace</Text>
+        </View>
+
+        <View style={{ 
+          flexDirection: 'row', alignItems: 'center',
+          backgroundColor: 'rgba(15,109,91,0.06)', borderRadius: 12,
+          paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16,
+          borderWidth: 1, borderColor: 'rgba(15,109,91,0.1)'
+        }}>
+          <MaterialIcons name="search" size={20} color={Colors.textMuted} style={{ marginRight: 8 }} />
+          <TextInput
+            placeholder="Search duas..."
+            placeholderTextColor={Colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={{ flex: 1, fontSize: 14, color: Colors.textDark, fontFamily: 'Manrope' }}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Categories */}
@@ -106,9 +143,28 @@ export const DuasScreen = ({ navigation }: any) => {
 
         {/* Dua Lists */}
         <View style={styles.duasList}>
-          {DUAS.map((dua) => {
-            const isSoft = dua.variant === 'soft';
-            const isOutlined = dua.variant === 'outlined';
+          {DUAS.filter(dua => {
+            const matchesCategory = dua.category === activeCategory;
+            const matchesSearch = searchQuery.trim() === '' ||
+              dua.arabic.includes(searchQuery) ||
+              dua.translation.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesCategory && matchesSearch;
+          }).length === 0 ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <MaterialIcons name="auto-stories" size={48} color="rgba(0,83,68,0.2)" />
+              <Text style={{ fontFamily: 'Plus Jakarta Sans', color: Colors.primary, fontWeight: '700', fontSize: 16, marginTop: 16 }}>No duas found</Text>
+              <Text style={{ fontFamily: 'Manrope', color: Colors.textMuted, fontSize: 14, textAlign: 'center', marginTop: 4 }}>Check back later or write your own dua above.</Text>
+            </View>
+          ) : (
+            DUAS.filter(dua => {
+              const matchesCategory = dua.category === activeCategory;
+              const matchesSearch = searchQuery.trim() === '' ||
+                dua.arabic.includes(searchQuery) ||
+                dua.translation.toLowerCase().includes(searchQuery.toLowerCase());
+              return matchesCategory && matchesSearch;
+            }).map((dua) => {
+              const isSoft = dua.variant === 'soft';
+              const isOutlined = dua.variant === 'outlined';
 
             return (
               <View
@@ -145,7 +201,7 @@ export const DuasScreen = ({ navigation }: any) => {
                 <Text style={styles.translationText}>{dua.translation}</Text>
               </View>
             );
-          })}
+          }))}
         </View>
 
         <View style={{ height: 120 }} />

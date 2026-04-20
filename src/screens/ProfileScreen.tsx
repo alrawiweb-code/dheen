@@ -14,18 +14,38 @@ import { Colors, Typography, NativeSpacing as Spacing, Shadows, BorderRadius } f
 import { useAppStore } from '../store/useAppStore';
 import { GradientCTA } from '../components/GradientCTA';
 
-const MOODS = [
+const MOOD_COLORS: Record<string, string> = {
+  connected: Colors.primary,
+  present: Colors.secondary,
+  distracted: Colors.prayerMissed,
+  rushed: Colors.prayerMissed,
+  emotional: Colors.primary,
+};
+
+const BASE_MOODS = [
   'rgba(0,83,68,0.2)', 'rgba(0,83,68,0.4)', 'rgba(0,83,68,0.8)', 'rgba(186,26,26,0.3)',
   'rgba(0,83,68,0.6)', 'rgba(115,92,0,0.4)', 'rgba(0,83,68,0.9)', 'rgba(0,83,68,0.5)',
   'rgba(0,83,68,0.7)', 'rgba(186,26,26,0.2)', 'rgba(0,83,68,0.9)', 'rgba(115,92,0,0.6)',
   'rgba(0,83,68,0.1)', 'rgba(0,83,68,0.4)', 'rgba(0,83,68,0.8)', 'rgba(0,83,68,0.6)',
   'rgba(115,92,0,0.3)', 'rgba(186,26,26,0.4)', 'rgba(0,83,68,0.9)', 'rgba(0,83,68,0.5)',
-  'rgba(0,83,68,0.7)', 'rgba(0,83,68,0.2)', 'rgba(0,83,68,0.9)', 'rgba(115,92,0,0.5)',
-  'rgba(0,83,68,0.4)', 'rgba(0,83,68,0.8)', 'rgba(0,83,68,0.1)', 'rgba(0,83,68,0.6)',
+  'rgba(0,83,68,0.7)', 'rgba(0,83,68,0.2)', 'rgba(0,83,68,0.9)',
 ];
 
 export const ProfileScreen = () => {
-  const { profile } = useAppStore();
+  const { profile, milestones, prayerMoods } = useAppStore();
+
+  const totalPrayers = milestones.fajrCount + milestones.tahajjudCount; // Simplified heuristic
+  const sukoonEntries = milestones.sukoonCount;
+
+  const FAJR_TARGET = 20;
+  const STREAK_TARGET = 10;
+  const fajrProgress = Math.min(milestones.fajrCount / FAJR_TARGET, 1);
+  const streakProgress = Math.min(milestones.streakDays / STREAK_TARGET, 1);
+
+  // Insert today's recorded moods
+  const todayMoodKeys = Object.values(prayerMoods).filter(Boolean);
+  const trailingMoods = todayMoodKeys.map(k => MOOD_COLORS[k as keyof typeof MOOD_COLORS] || 'rgba(0,83,68,0.2)');
+  const renderedMoods = [...trailingMoods].slice(-30);
 
   return (
     <View style={styles.container}>
@@ -33,18 +53,12 @@ export const ProfileScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.avatar}>
-            <Image 
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAOfQV_J8fFGCxoWD9pQIHlybXNZTqns78GzTvQuf2UHv4SG16dpFIg5ftLpiqT1avJA73okCrBUsp4YlkJBnSAXmHr8N2Du-Z8RfoBXETtpD-P9O3EfwZT-7MfwY0pG4BadQ02ySufI0zi0SsFJroCPed_anr36fUS0NLzAHviPY8iDxfl0Xd7R9OJRODibypyk8rPh9i_qCA5-0B07UZyXfhaDL6EsYIOSdSiJTaHlWztFJKrL-NJZ8ms3j3bmUuwjYZCIYldHLFX' }} 
-              style={StyleSheet.absoluteFillObject} 
-            />
+             <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>{profile.name?.[0]?.toUpperCase() || 'A'}</Text>
           </View>
-          <Text style={styles.dateText}>14 Shawwal 1446</Text>
+          <Text style={styles.dateText}>{profile.name || 'Abdullah'}</Text>
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.premiumText}>ETHEREAL</Text>
-          <TouchableOpacity>
-            <MaterialIcons name="brightness-5" size={24} color={Colors.primary} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -57,11 +71,11 @@ export const ProfileScreen = () => {
           <View style={styles.statsRow}>
             <View style={styles.statCardLeft}>
               <Text style={styles.statLabelLeft}>TOTAL PRAYERS</Text>
-              <Text style={styles.statNumberLeft}>1,248</Text>
+              <Text style={styles.statNumberLeft}>{totalPrayers}</Text>
             </View>
             <View style={styles.statCardRight}>
-              <Text style={styles.statLabelRight}>TOTAL DUAS</Text>
-              <Text style={styles.statNumberRight}>432</Text>
+              <Text style={styles.statLabelRight}>SUKOON ENTRIES</Text>
+              <Text style={styles.statNumberRight}>{sukoonEntries}</Text>
             </View>
           </View>
         </View>
@@ -73,25 +87,35 @@ export const ProfileScreen = () => {
             <Text style={styles.sectionLabel}>Last 30 Days</Text>
           </View>
           <View style={styles.moodMapCard}>
-            <View style={styles.moodGrid}>
-              {MOODS.map((color, i) => (
-                <View key={i} style={[styles.moodCell, { backgroundColor: color }]} />
-              ))}
-            </View>
-            <View style={styles.moodLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
-                <Text style={styles.legendText}>FOCUSED</Text>
+            {renderedMoods.length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <MaterialIcons name="grid-on" size={32} color="rgba(0,83,68,0.2)" />
+                <Text style={{ fontFamily: 'Plus Jakarta Sans', color: Colors.primary, fontWeight: '700', fontSize: 14, marginTop: 12 }}>Your prayer mood map will build here</Text>
+                <Text style={{ fontFamily: 'Manrope', color: Colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 4 }}>Log your salah to visualize your spiritual pattern.</Text>
               </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: Colors.secondary }]} />
-                <Text style={styles.legendText}>CONTENT</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: Colors.prayerMissed }]} />
-                <Text style={styles.legendText}>DISTRACTED</Text>
-              </View>
-            </View>
+            ) : (
+              <>
+                <View style={styles.moodGrid}>
+                  {renderedMoods.map((color, i) => (
+                    <View key={i} style={[styles.moodCell, { backgroundColor: color }]} />
+                  ))}
+                </View>
+                <View style={styles.moodLegend}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
+                    <Text style={styles.legendText}>FOCUSED</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: Colors.secondary }]} />
+                    <Text style={styles.legendText}>CONTENT</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: Colors.prayerMissed }]} />
+                    <Text style={styles.legendText}>DISTRACTED</Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -99,27 +123,11 @@ export const ProfileScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Intentions This Week</Text>
           <View style={styles.intentionList}>
-            <TouchableOpacity style={styles.intentionCard} activeOpacity={0.7}>
-              <View style={styles.intentionIconWudu}>
-                <MaterialIcons name="water-drop" size={20} color={Colors.primary} />
-              </View>
-              <View style={styles.intentionContent}>
-                <Text style={styles.intentionTitle}>Perfecting Wudu Focus</Text>
-                <Text style={styles.intentionStatus}>4/7 days completed</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="rgba(0,83,68,0.4)" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.intentionCard} activeOpacity={0.7}>
-              <View style={styles.intentionIconCharity}>
-                <MaterialIcons name="volunteer-activism" size={20} color={Colors.secondary} />
-              </View>
-              <View style={styles.intentionContent}>
-                <Text style={styles.intentionTitle}>Daily Charity Mindset</Text>
-                <Text style={styles.intentionStatus}>Active intention</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="rgba(0,83,68,0.4)" />
-            </TouchableOpacity>
+            <View style={{ padding: 30, backgroundColor: 'rgba(15,109,91,0.05)', borderRadius: 20, alignItems: 'center' }}>
+              <Text style={{ fontSize: 32, marginBottom: 8 }}>🧭</Text>
+              <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.primary }}>No active intentions</Text>
+              <Text style={{ fontFamily: 'Manrope', fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginTop: 4 }}>Set an intention from the Home Screen to build a meaningful habit.</Text>
+            </View>
           </View>
         </View>
 
@@ -132,9 +140,9 @@ export const ProfileScreen = () => {
               <View>
                 <Text style={styles.milestoneTitle}>Early Riser</Text>
                 <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { backgroundColor: Colors.primary, width: '75%' }]} />
+                  <View style={[styles.progressBarFill, { backgroundColor: Colors.primary, width: `${Math.round(fajrProgress * 100)}%` }]} />
                 </View>
-                <Text style={styles.milestoneProgressText}>15/20 Fajr</Text>
+                <Text style={styles.milestoneProgressText}>{milestones.fajrCount}/{FAJR_TARGET} Fajr</Text>
               </View>
             </View>
 
@@ -143,9 +151,9 @@ export const ProfileScreen = () => {
               <View>
                 <Text style={styles.milestoneTitle}>Anchor Found</Text>
                 <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { backgroundColor: Colors.secondary, width: '50%' }]} />
+                  <View style={[styles.progressBarFill, { backgroundColor: Colors.secondary, width: `${Math.round(streakProgress * 100)}%` }]} />
                 </View>
-                <Text style={styles.milestoneProgressText}>5/10 Istighfar</Text>
+                <Text style={styles.milestoneProgressText}>{milestones.streakDays}/{STREAK_TARGET} Day Streak</Text>
               </View>
             </View>
 

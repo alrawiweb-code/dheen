@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Platform,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, NativeSpacing as Spacing } from '../theme';
+import { useAppStore } from '../store/useAppStore';
 
 const { width, height } = Dimensions.get('window');
 const ONBOARDING_DONE_KEY = '@dheen_onboarding_done';
@@ -24,7 +26,7 @@ const SLIDES = [
     label: 'NOUR',
     title: 'Stay connected with your Deen, every day.',
     description: 'Begin your journey towards spiritual consistency and inner peace.',
-    imageUri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBIwjNJMUCFl3YhwOVhyATuK0XUaHP2wQjcAzkBjl7EAGwtqU4tjQHx5T-7zrEb1I5SB_hgDdP73l4XgomrSBlziTgjxiNlSH6983K5tfvwm2XpuUjXKB-CxDu_ZfnbRZuXRYL1skYAXS6LWke5H8xUvaOF2ayY68NpteOLpUV0pSPqfR4Cv_P_6hkR0mif8bYFW-TXr6fgy3KQbAbbeX2hQMYL5oBOz5e7fUThCsdjouWv5NrxoBafHuxiM-VsLiAD8p8igZPHWMp4',
+    imageUri: 'https://images.unsplash.com/photo-1584551246679-0daf3d275d05?auto=format&fit=crop&w=800&q=80/AB6AXuBIwjNJMUCFl3YhwOVhyATuK0XUaHP2wQjcAzkBjl7EAGwtqU4tjQHx5T-7zrEb1I5SB_hgDdP73l4XgomrSBlziTgjxiNlSH6983K5tfvwm2XpuUjXKB-CxDu_ZfnbRZuXRYL1skYAXS6LWke5H8xUvaOF2ayY68NpteOLpUV0pSPqfR4Cv_P_6hkR0mif8bYFW-TXr6fgy3KQbAbbeX2hQMYL5oBOz5e7fUThCsdjouWv5NrxoBafHuxiM-VsLiAD8p8igZPHWMp4',
     bg: Colors.background,
     isDark: false,
   },
@@ -44,7 +46,7 @@ const SLIDES = [
     label: 'PREPARE',
     title: 'This is your space.',
     description: 'No pressure. No judgement. Just peace.',
-    imageUri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC9w26Sapz23oYaaZOAdNkqmgpDIv3Nzdwq4JVgiZOWlDtpiCato-494VZvLvdS8xAcrc-5x2DEuFlnc8AwSmiQzgCSLAy826lQoVN9knddyO-vZaH8QPqabQ5uYTVtjKdloiSyQQkiOKWd4nX6p0uWoe0UiRNgWF52EqRGYZrcxwT8nk4dvIk_9VJMw9EPszXfqH_lKJ3G3yjsiJxmp6hKJtnUYjQNhmLCJApz7BYsxKysgOzJy1UhGzeM7LmJh2sFFn1mXX9Dfwp9',
+    imageUri: 'https://images.unsplash.com/photo-1584551246679-0daf3d275d05?auto=format&fit=crop&w=800&q=80/AB6AXuC9w26Sapz23oYaaZOAdNkqmgpDIv3Nzdwq4JVgiZOWlDtpiCato-494VZvLvdS8xAcrc-5x2DEuFlnc8AwSmiQzgCSLAy826lQoVN9knddyO-vZaH8QPqabQ5uYTVtjKdloiSyQQkiOKWd4nX6p0uWoe0UiRNgWF52EqRGYZrcxwT8nk4dvIk_9VJMw9EPszXfqH_lKJ3G3yjsiJxmp6hKJtnUYjQNhmLCJApz7BYsxKysgOzJy1UhGzeM7LmJh2sFFn1mXX9Dfwp9',
     bg: '#005344',
     isDark: true,
   },
@@ -53,6 +55,8 @@ const SLIDES = [
 // ─── Component ────────────────────────────────────────────────────
 export const OnboardingScreen = ({ navigation }: any) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [name, setName] = useState('');
+  const { setProfile } = useAppStore();
 
   const goNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -70,6 +74,7 @@ export const OnboardingScreen = ({ navigation }: any) => {
     } catch (_) {
       // Non-critical — still navigate
     }
+    setProfile({ name: name.trim() || 'Friend', onboardingComplete: true });
     navigation.replace('Root');
   };
 
@@ -110,7 +115,10 @@ export const OnboardingScreen = ({ navigation }: any) => {
           {currentIndex === 0 && (
             <>
               <View style={styles.imageContainer}>
-                <Image source={{ uri: slide.imageUri }} style={styles.circleImage} />
+                <LinearGradient
+                  colors={['#0F6D5B', '#eae8e3']}
+                  style={styles.circleImage}
+                />
               </View>
               <View style={styles.textWrapper}>
                 <Text style={styles.title}>{slide.title}</Text>
@@ -170,11 +178,25 @@ export const OnboardingScreen = ({ navigation }: any) => {
           {currentIndex === 2 && (
             <>
               <View style={styles.archImageContainer}>
-                <Image source={{ uri: slide.imageUri }} style={styles.archImage} />
+                <LinearGradient
+                  colors={['#0F6D5B', '#002019']}
+                  style={styles.archImage}
+                />
               </View>
               <View style={styles.textWrapperDark}>
                 <Text style={styles.titleDark}>{slide.title}</Text>
                 <Text style={styles.descriptionDark}>{slide.description}</Text>
+              </View>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.nameInput}
+                  placeholder="What is your name?"
+                  placeholderTextColor="rgba(154,236,213,0.5)"
+                  value={name}
+                  onChangeText={setName}
+                  autoCorrect={false}
+                  returnKeyType="done"
+                />
               </View>
               <View style={styles.enterContainer}>
                 <TouchableOpacity
@@ -303,7 +325,19 @@ const styles = StyleSheet.create({
   enterText: { color: Colors.primary, fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: '800' },
   footerPrivacy: {
     color: 'rgba(255,255,255,0.4)', fontSize: 10,
-    fontFamily: 'Manrope', fontWeight: '600', letterSpacing: 1.5,
+    fontFamily: 'Manrope', letterSpacing: 2, marginTop: 12,
+  },
+  inputWrapper: { width: '100%', marginBottom: 24 },
+  nameInput: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    padding: 16,
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'Plus Jakarta Sans',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(154,236,213,0.2)',
   },
 
   // Dots

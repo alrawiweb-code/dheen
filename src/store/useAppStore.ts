@@ -42,6 +42,9 @@ export interface UserProfile {
   photoUri: string | null;
   city: string;
   country: string;
+  autoLocation: boolean;
+  latitude: number | null;
+  longitude: number | null;
   onboardingComplete: boolean;
 }
 
@@ -54,9 +57,10 @@ export interface AppState {
   todayNiyyah: string;
   setNiyyah: (niyyah: string) => void;
 
-  // Prayer status for today
+  lastPrayerResetDate: string;
   prayerStatuses: Record<Prayer, PrayerStatus>;
   setPrayerStatus: (prayer: Prayer, status: PrayerStatus) => void;
+  resetDailyPrayers: () => void;
 
   // Prayer moods
   prayerMoods: Record<Prayer, MoodKey>;
@@ -82,6 +86,8 @@ export interface AppState {
   adhanSettings: AdhanSettings;
   updateAdhanSettings: (settings: Partial<AdhanSettings>) => void;
   updatePrayerAdhanSettings: (prayer: Prayer, settings: Partial<AdhanPrayerSettings>) => void;
+  isAdhanPlaying: boolean;
+  setAdhanPlaying: (playing: boolean) => void;
 
   // Sukoon Journal
   sukoonEntries: SukoonEntry[];
@@ -130,8 +136,11 @@ export const useAppStore = create<AppState>()(
   profile: {
     name: 'Friend',
     photoUri: null,
-    city: '',
-    country: '',
+    city: 'Dubai',
+    country: 'United Arab Emirates',
+    autoLocation: true,
+    latitude: null,
+    longitude: null,
     onboardingComplete: false,
   },
   setProfile: (profile) =>
@@ -151,6 +160,26 @@ export const useAppStore = create<AppState>()(
     set((state) => ({
       prayerStatuses: { ...state.prayerStatuses, [prayer]: status },
     })),
+
+  resetDailyPrayers: () =>
+    set({
+      prayerStatuses: {
+        Fajr: 'pending',
+        Dhuhr: 'pending',
+        Asr: 'pending',
+        Maghrib: 'pending',
+        Isha: 'pending',
+      },
+      prayerMoods: {
+        Fajr: null,
+        Dhuhr: null,
+        Asr: null,
+        Maghrib: null,
+        Isha: null,
+      },
+    }),
+
+  lastPrayerResetDate: new Date().toDateString(),
 
   prayerMoods: {
     Fajr: null,
@@ -200,6 +229,9 @@ export const useAppStore = create<AppState>()(
       },
     })),
 
+  isAdhanPlaying: false,
+  setAdhanPlaying: (playing) => set({ isAdhanPlaying: playing }),
+
   sukoonEntries: [],
   addSukoonEntry: (entry) =>
     set((state) => ({
@@ -231,6 +263,10 @@ export const useAppStore = create<AppState>()(
     {
       name: 'dheen-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        return persistedState;
+      },
     }
   )
 );

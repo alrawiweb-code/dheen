@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -38,7 +38,22 @@ const PAST_REFLECTIONS = [
 ];
 
 export const SukoonScreen = ({ navigation }: any) => {
-  const { profile } = useAppStore();
+  const { profile, sukoonEntries, addSukoonEntry, todayNiyyah, incrementMilestone } = useAppStore();
+  const [reflectionText, setReflectionText] = useState('');
+  const [showAll, setShowAll] = useState(false);
+
+  const handleSave = () => {
+    if (!reflectionText.trim()) return;
+    addSukoonEntry({
+      text: reflectionText.trim(),
+      mood: null,
+      niyyah: todayNiyyah || '',
+      date: new Date().toISOString(),
+      prompt: '',
+    });
+    incrementMilestone('sukoonCount');
+    setReflectionText('');
+  };
 
   return (
     <View style={styles.container}>
@@ -49,12 +64,8 @@ export const SukoonScreen = ({ navigation }: any) => {
             <MaterialIcons name="arrow-back" size={24} color={Colors.primary} />
           </TouchableOpacity>
           <View style={styles.avatar}>
-            <Image 
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBldSsIdZGsTtgCopWv5OaNPPzuvz9BJnHjnvxKJ20kmEZ9E9oAqtXiIi6HGi9ZRWKyA0chT5HX0508nT1W3NXdj-qXh3k6npTpnRX-LKP8dp1TWsLy0skCzQUOn48xZKVqvUzjm9G6pnNo1djzGltLtEeL72r6zTcj1bZ-X6nx3WRJIJ2Q2P-T0Moo0JjTDf6XBIZ5JI2Y85w_wiBxL2a5FMLMdbwudcht1PH0TMeW2J2ek5LfWK-0Mq68EPqcWTrsFMNia-HMueeH' }} 
-              style={StyleSheet.absoluteFillObject} 
-            />
+            <Text style={{color: Colors.primary, fontSize: 16, fontWeight: 'bold'}}>{profile?.name?.[0]?.toUpperCase() || 'A'}</Text>
           </View>
-          <Text style={styles.dateText}>14 Shawwal 1446</Text>
         </View>
         <TouchableOpacity>
           <MaterialIcons name="brightness-5" size={24} color={Colors.primary} />
@@ -83,6 +94,8 @@ export const SukoonScreen = ({ navigation }: any) => {
               <TextInput
                 style={styles.textInput}
                 multiline
+                value={reflectionText}
+                onChangeText={setReflectionText}
                 placeholder="Begin your reflection..."
                 placeholderTextColor="rgba(111,121,117,0.7)"
                 textAlignVertical="top"
@@ -92,7 +105,7 @@ export const SukoonScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.saveBtn} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.saveBtn} activeOpacity={0.8} onPress={handleSave}>
               <LinearGradient
                 colors={[Colors.primary, '#0f6d5b']}
                 start={{ x: 0, y: 0 }}
@@ -111,38 +124,38 @@ export const SukoonScreen = ({ navigation }: any) => {
               <Text style={styles.sectionTitle}>Spiritual Seeds</Text>
               <Text style={styles.sectionSubtitle}>Your garden of past reflections</Text>
             </View>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>VIEW ALL</Text>
+            <TouchableOpacity onPress={() => setShowAll(v => !v)}>
+              <Text style={styles.viewAllText}>{showAll ? 'SHOW LESS' : 'VIEW ALL'}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.seedsList}>
-            {PAST_REFLECTIONS.map((item, idx) => (
-              <TouchableOpacity key={idx} style={styles.seedItem} activeOpacity={0.7}>
-                <View style={[styles.seedDateBox, { backgroundColor: item.color }]}>
-                  <Text style={[styles.seedDateText, { color: item.textColor }]}>{item.day}</Text>
-                </View>
-                <View style={styles.seedContent}>
-                  <Text style={styles.seedMonthText}>{item.month}</Text>
-                  <Text style={styles.seedDescText} numberOfLines={2}>{item.text}</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={24} color={Colors.textMuted} />
-              </TouchableOpacity>
-            ))}
+            {sukoonEntries.length === 0 ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ fontSize: 40, marginBottom: 10 }}>🌱</Text>
+                <Text style={{ fontFamily: 'Plus Jakarta Sans', color: Colors.primary, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Your garden is empty</Text>
+                <Text style={{ fontFamily: 'Manrope', color: Colors.textMuted, fontSize: 14, textAlign: 'center' }}>Save a reflection above to plant your first seed of Sukoon.</Text>
+              </View>
+            ) : (
+              (showAll ? sukoonEntries : sukoonEntries.slice(0, 3)).map((item, idx) => (
+                <TouchableOpacity key={idx} style={styles.seedItem} activeOpacity={0.7}>
+                  <View style={[styles.seedDateBox, { backgroundColor: '#ffe088' }]}>
+                    <Text style={[styles.seedDateText, { color: '#241a00' }]}>{new Date(item.date).getDate()}</Text>
+                  </View>
+                  <View style={styles.seedContent}>
+                    <Text style={styles.seedMonthText}>{new Date(item.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</Text>
+                    <Text style={styles.seedDescText} numberOfLines={2}>{item.text}</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={24} color={Colors.textMuted} />
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Floating Ruhani Button */}
-      <TouchableOpacity style={styles.fab}>
-        <LinearGradient 
-          colors={[Colors.primary, '#0f6d5b']} 
-          style={StyleSheet.absoluteFillObject} 
-        />
-        <MaterialIcons name="auto-awesome" size={28} color="#fff" />
-      </TouchableOpacity>
     </View>
   );
 };

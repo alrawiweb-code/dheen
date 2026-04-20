@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Audio } from 'expo-av';
 import {
   View,
   Text,
@@ -36,6 +37,52 @@ export const BreathingDhikrScreen: React.FC<BreathingDhikrProps> = ({ navigation
   const bgShift = useRef(new Animated.Value(0)).current;
 
   const currentDhikr = DhikrOptions[selectedDhikr];
+
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      soundRef.current?.unloadAsync();
+    };
+  }, []);
+
+  // Load/play sound when selection changes or session starts/stops
+  useEffect(() => {
+    const AMBIENT_SOURCES: Record<number, string | null> = {
+      0: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_88447d341b.mp3', // Rain
+      1: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3', // Wind
+      2: null, // Silence
+    };
+
+    const loadAudio = async () => {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+
+      const uri = AMBIENT_SOURCES[sound];
+      if (!started || uri === null) return; // silence or session not started
+
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+        });
+        const { sound: audioSound } = await Audio.Sound.createAsync(
+          { uri },
+          { isLooping: true, shouldPlay: true }
+        );
+        soundRef.current = audioSound;
+      } catch (e) {
+        console.warn('[BreathingDhikr] Audio error:', e);
+      }
+    };
+
+    loadAudio();
+  }, [sound, started]);
 
   useEffect(() => {
     if (!started) return;

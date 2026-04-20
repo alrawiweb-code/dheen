@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,65 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, NativeSpacing as Spacing } from '../theme';
+import { Magnetometer } from 'expo-sensors';
+import { useAppStore } from '../store/useAppStore';
 
 const { width } = Dimensions.get('window');
 const COMPASS_SIZE = Math.min(width * 0.78, 300);
 
-// Static Qibla bearing for London (demo) – in real app sourced from device sensors
-const QIBLA_BEARING = 292;
+const MECCA_LAT = 21.422487;
+const MECCA_LNG = 39.826206;
+
+const getBearing = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const toDeg = (x: number) => (x * 180) / Math.PI;
+  const y = Math.sin(toRad(lng2 - lng1)) * Math.cos(toRad(lat2));
+  const x =
+    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1));
+  const bearing = toDeg(Math.atan2(y, x));
+  return (bearing + 360) % 360;
+};
 
 export const QiblaScreen = ({ navigation }: any) => {
+  const { profile } = useAppStore();
+  const [deviceHeading, setDeviceHeading] = useState(0);
+  const [permissionError, setPermissionError] = useState(false);
+  const subRef = useRef<any>(null);
+
+  const lat = profile.latitude || 25.2048;
+  const lng = profile.longitude || 55.2708;
+  const qiblaBearing = getBearing(lat, lng, MECCA_LAT, MECCA_LNG);
+
+  useEffect(() => {
+    const initCompass = async () => {
+      try {
+        const available = await Magnetometer.isAvailableAsync();
+        if (!available) {
+          setPermissionError(true);
+          return;
+        }
+        Magnetometer.setUpdateInterval(100);
+        subRef.current = Magnetometer.addListener(data => {
+          let angle = Math.atan2(data.y, data.x) * (180 / Math.PI);
+          angle = angle >= 0 ? angle : angle + 360;
+          setDeviceHeading(angle);
+        });
+      } catch (e) {
+        setPermissionError(true);
+      }
+    };
+    initCompass();
+
+    return () => {
+      subRef.current?.remove();
+      subRef.current = null;
+    };
+  }, []);
+
+  const compassRotation = 360 - deviceHeading;
+  const pointerRotation = qiblaBearing;
+
   return (
     <View style={styles.container}>
       {/* Radial gradient background */}
@@ -31,22 +82,27 @@ export const QiblaScreen = ({ navigation }: any) => {
       <SafeAreaView>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar} />
+            <View style={styles.avatar}>
+               <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>{profile.name?.[0]?.toUpperCase() || 'A'}</Text>
+            </View>
             <Text style={styles.headerLabel}>QIBLA</Text>
           </View>
-          <Text style={styles.dateText}>14 Shawwal 1446</Text>
-          <TouchableOpacity>
-            <MaterialIcons name="brightness-5" size={24} color={Colors.primary} />
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       {/* Main compass canvas */}
       <View style={styles.mainCanvas}>
+        {permissionError && (
+          <View style={{ position: 'absolute', top: -50, backgroundColor: 'rgba(186, 26, 26, 0.9)', padding: 12, borderRadius: 12, zIndex: 50, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <MaterialIcons name="error-outline" size={20} color="#fff" />
+            <Text style={{ color: '#fff', fontFamily: 'Manrope', fontSize: 14 }}>Compass unavailable or permission denied.</Text>
+          </View>
+        )}
+        
         {/* Location badge */}
         <View style={styles.locationBadge}>
-          <Text style={styles.locationLabel}>Location: London, UK</Text>
-          <Text style={styles.bearingText}>292° NW</Text>
+          <Text style={styles.locationLabel}>{profile.city ? `Location: ${profile.city}, ${profile.country}` : 'Location Active'}</Text>
+          <Text style={styles.bearingText}>{Math.round(qiblaBearing)}°</Text>
           <Text style={styles.alignText}>Align yourself with the arrow to face the Kaaba</Text>
         </View>
 
@@ -56,8 +112,8 @@ export const QiblaScreen = ({ navigation }: any) => {
           <View style={styles.compassRing1} />
           <View style={styles.compassRing2} />
 
-          {/* Compass disk */}
-          <BlurView intensity={10} tint="dark" style={styles.compassDisk}>
+          {/* Compass disk - this rotates with the device magnetometer */}
+          <BlurView intensity={10} tint="dark" style={[styles.compassDisk, { transform: [{ rotate: `${compassRotation}deg` }] }]}>
             {/* Inner degree ring */}
             <View style={styles.degreeRing} />
 
@@ -67,8 +123,8 @@ export const QiblaScreen = ({ navigation }: any) => {
             <Text style={[styles.cardinal, styles.cardinalS]}>S</Text>
             <Text style={[styles.cardinal, styles.cardinalW]}>W</Text>
 
-            {/* Qibla arrow rotated to bearing */}
-            <View style={[styles.arrowContainer, { transform: [{ rotate: `${QIBLA_BEARING}deg` }] }]}>
+            {/* Qibla arrow rotates pointing to the exact bearing relative to North */}
+            <View style={[styles.arrowContainer, { transform: [{ rotate: `${pointerRotation}deg` }] }]}>
               <View style={styles.arrowTip}>
                 <MaterialIcons name="mosque" size={18} color="#241a00" />
               </View>
@@ -92,11 +148,6 @@ export const QiblaScreen = ({ navigation }: any) => {
         </BlurView>
       </View>
 
-      {/* Floating Ruhani FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('Ruhani')}>
-        <LinearGradient colors={[Colors.primary, '#0f6d5b']} style={StyleSheet.absoluteFillObject} />
-        <MaterialIcons name="auto-awesome" size={26} color="#fff" />
-      </TouchableOpacity>
     </View>
   );
 };

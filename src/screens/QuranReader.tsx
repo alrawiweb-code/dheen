@@ -76,7 +76,7 @@ function buildQueue(
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const QuranReader: React.FC<QuranReaderProps> = ({ route, navigation }) => {
+export const QuranReader = ({ route, navigation }: any) => {
   const { surahNumber, surahName } = route.params;
 
   // ── Data state ────────────────────────────────────────────────
@@ -117,6 +117,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({ route, navigation }) =
   const playIndexRef = useRef<number>(0);
   const isQueueActiveRef = useRef<boolean>(false);
   const isPausedRef = useRef<boolean>(false);
+  const flatListRef = useRef<FlatList>(null);
   const playAyahRef = useRef<((index: number) => Promise<void>) | null>(null);
 
   // ── Audio UI state ───────────────────────────────────────────
@@ -130,7 +131,18 @@ export const QuranReader: React.FC<QuranReaderProps> = ({ route, navigation }) =
   const [showModal, setShowModal] = useState(false);
   const [selectedAyah, setSelectedAyah] = useState<Ayah | null>(null);
   const shimmerAnim = useRef(new Animated.Value(0)).current;
-  const { setAyahOfMyLife, setLastReading } = useAppStore();
+  const { setAyahOfMyLife, setLastReading, isAdhanPlaying, incrementMilestone } = useAppStore();
+
+  // Force-pause if system Adhan triggers globally
+  useEffect(() => {
+    if (isAdhanPlaying && !isPaused && soundRef.current) {
+      console.log('[QuranReader] Adhan intercept trigger: Pausing recitation.');
+      soundRef.current.pauseAsync().catch(() => {});
+      setIsPaused(true);
+      isPausedRef.current = true;
+      try { Speech.stop(); } catch (e) {}
+    }
+  }, [isAdhanPlaying, isPaused]);
 
   useEffect(() => {
     setLoading(true);
@@ -145,6 +157,18 @@ export const QuranReader: React.FC<QuranReaderProps> = ({ route, navigation }) =
           surahName: surah.englishName,
           ayahNumber: 1,
         });
+        incrementMilestone('quranDays');
+
+        // After ayahs are set, scroll to saved position if resuming
+        if (savedStartIndexRef.current > 0) {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: savedStartIndexRef.current,
+              animated: false,
+              viewPosition: 0,
+            });
+          }, 300);
+        }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -324,10 +348,10 @@ export const QuranReader: React.FC<QuranReaderProps> = ({ route, navigation }) =
                       try { Speech.stop(); } catch(e) {}
                       triggerNextAyah();
                     }
-                  }, Math.max(currentAyah.translation.length * 100 + 4000, 8000));
+                  }, Math.max((currentAyah.translation?.length || 0) * 100 + 4000, 8000));
 
                   console.log(`[QuranReader] Playing translation for ayah ${currentAyah.number} in ${langTag}`);
-                  Speech.speak(currentAyah.translation, {
+                  Speech.speak(currentAyah.translation || '', {
                     language: langTag,
                     onDone: () => {
                       if (!translationFinished && !isPausedRef.current) {
@@ -640,7 +664,13 @@ export const QuranReader: React.FC<QuranReaderProps> = ({ route, navigation }) =
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={ayahs}
+          getItemLayout={(data, index) => ({
+            length: 180, // approximate ayah card height
+            offset: 180 * index,
+            index,
+          })}
           keyExtractor={(a) => String(a.number)}
           renderItem={renderAyah}
           contentContainerStyle={styles.listContent}

@@ -5,12 +5,13 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
+  StyleProp,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface HapticButtonProps {
   onPress: () => void;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   hitSlop?: { top: number; bottom: number; left: number; right: number };
   disabled?: boolean;
   hapticType?: 'light' | 'medium' | 'heavy' | 'none';

@@ -1,7 +1,7 @@
-// AlAdhan Prayer Times API — no API key required
-// https://aladhan.com/prayer-times-api
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ALADHAN_BASE = 'https://api.aladhan.com/v1';
+const PRAYER_CACHE_KEY = 'deen_prayer_cache';
 
 export interface PrayerTimes {
   Fajr: string;
@@ -27,48 +27,97 @@ export async function fetchPrayerTimes(
   latitude: number,
   longitude: number,
   method: number = 2,
-): Promise<{ times: PrayerTimes; hijri: HijriDate }> {
+): Promise<{ times: PrayerTimes; hijri: HijriDate; isOfflineFallback?: boolean }> {
   const date = new Date();
   const dateStr = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+  const cacheKey = `${PRAYER_CACHE_KEY}_${dateStr}`;
 
-  const url = `${ALADHAN_BASE}/timings/${dateStr}?latitude=${latitude}&longitude=${longitude}&method=${method}`;
-  const res = await fetch(url);
-  const json = await res.json();
+  try {
+    const url = `${ALADHAN_BASE}/timings/${dateStr}?latitude=${latitude}&longitude=${longitude}&method=${method}`;
+    const res = await fetch(url);
+    const json = await res.json();
 
-  if (json.code !== 200) throw new Error(json.status || 'Failed to fetch prayer times');
+    if (json.code !== 200) throw new Error(json.status || 'Failed to fetch prayer times');
 
-  const times: PrayerTimes = {
-    ...json.data.timings,
-    date: json.data.date.gregorian.date,
-  };
+    const payload = {
+      times: {
+        ...json.data.timings,
+        date: json.data.date.gregorian.date,
+      },
+      hijri: json.data.date.hijri,
+    };
 
-  const hijri: HijriDate = json.data.date.hijri;
+    // Save to local cache
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(payload));
+    await AsyncStorage.setItem(`${PRAYER_CACHE_KEY}_latest`, JSON.stringify(payload));
 
-  return { times, hijri };
+    return payload;
+  } catch (error) {
+    console.warn(`[PrayerTimes] Network fetch failed. Attempting offline fallback.`, error);
+    
+    // Try today's cache
+    const todayCache = await AsyncStorage.getItem(cacheKey);
+    if (todayCache) {
+      console.log(`[PrayerTimes] Found local cache for today.`);
+      return { ...JSON.parse(todayCache), isOfflineFallback: true };
+    }
+    
+    // Try latest available cache
+    const latestCache = await AsyncStorage.getItem(`${PRAYER_CACHE_KEY}_latest`);
+    if (latestCache) {
+      console.log(`[PrayerTimes] Falling back to last known cached times.`);
+      const parsed = JSON.parse(latestCache);
+      return { ...parsed, isOfflineFallback: true };
+    }
+
+    console.warn(`[PrayerTimes] Complete offline failure. Using static fallback.`);
+    return { times: FALLBACK_TIMES, hijri: FALLBACK_HIJRI, isOfflineFallback: true };
+  }
 }
 
 export async function fetchPrayerTimesByCity(
   city: string,
   country: string,
   method: number = 2,
-): Promise<{ times: PrayerTimes; hijri: HijriDate }> {
+): Promise<{ times: PrayerTimes; hijri: HijriDate; isOfflineFallback?: boolean }> {
   const date = new Date();
   const dateStr = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+  const cacheKey = `${PRAYER_CACHE_KEY}_${dateStr}_city`;
 
-  const url = `${ALADHAN_BASE}/timingsByCity/${dateStr}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}`;
-  const res = await fetch(url);
-  const json = await res.json();
+  try {
+    const url = `${ALADHAN_BASE}/timingsByCity/${dateStr}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}`;
+    const res = await fetch(url);
+    const json = await res.json();
 
-  if (json.code !== 200) throw new Error(json.status || 'Failed to fetch prayer times');
+    if (json.code !== 200) throw new Error(json.status || 'Failed to fetch prayer times');
 
-  const times: PrayerTimes = {
-    ...json.data.timings,
-    date: json.data.date.gregorian.date,
-  };
+    const payload = {
+      times: {
+        ...json.data.timings,
+        date: json.data.date.gregorian.date,
+      },
+      hijri: json.data.date.hijri,
+    };
 
-  const hijri: HijriDate = json.data.date.hijri;
+    // Save to local cache
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(payload));
+    await AsyncStorage.setItem(`${PRAYER_CACHE_KEY}_latest`, JSON.stringify(payload));
 
-  return { times, hijri };
+    return payload;
+  } catch (error) {
+    console.warn(`[PrayerTimes] Network fetch failed. Attempting offline fallback for city.`, error);
+    
+    const todayCache = await AsyncStorage.getItem(cacheKey);
+    if (todayCache) return { ...JSON.parse(todayCache), isOfflineFallback: true };
+    
+    const latestCache = await AsyncStorage.getItem(`${PRAYER_CACHE_KEY}_latest`);
+    if (latestCache) {
+      const parsed = JSON.parse(latestCache);
+      return { ...parsed, isOfflineFallback: true };
+    }
+
+    return { times: FALLBACK_TIMES, hijri: FALLBACK_HIJRI };
+  }
 }
 
 // Format time from 24h to 12h AM/PM

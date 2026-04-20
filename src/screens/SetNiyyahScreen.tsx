@@ -15,16 +15,21 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, NativeSpacing as Spacing, Shadows, NiyyahPresets } from '../theme';
 import { GradientCTA } from '../components/GradientCTA';
+import { useAppStore } from '../store/useAppStore';
 
 // Extract predefined presets or use the ones from theme
 const PRESETS = ['For knowledge', 'For healing', 'For my family', 'For Allah alone'];
 
 export const SetNiyyahScreen = ({ navigation }: any) => {
+  const { setNiyyah } = useAppStore();
   const [selectedNiyyah, setSelectedNiyyah] = useState<string>('');
   const [customNiyyah, setCustomNiyyah] = useState<string>('');
 
   const handleSetNiyyah = () => {
-    // Logic to save niyyah
+    const finalNiyyah = customNiyyah.trim() || selectedNiyyah;
+    if (finalNiyyah) {
+      setNiyyah(finalNiyyah);
+    }
     navigation.goBack();
   };
 
@@ -40,11 +45,10 @@ export const SetNiyyahScreen = ({ navigation }: any) => {
           <View style={styles.bottomRightGlow} />
           <View style={styles.topLeftGlow} />
 
-          {/* Decorative Image */}
-          <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA3yR3ouoU13_brtADoVNIBQNWzhVgSElC7DtePDNEQb3wxMBRrHSXuTRwK--_gkpkZDXsWif1sZtnGLAmmLK7khPjikJgrB8lRQpGLRqLPHKwc8V-tRiZaPq6lShOKmKUnxya5QV08uvCllYHBSTyfUXSG0s0INMhwN2nNvnwd3yuMMCUEy77Xv4pJbXZ86DwQm6RJHmv24pSRSldB-cvbETtCUCfUVxjpOG0V8wMqgTMlWkDuHfhDRmNCWkBrCH7iIa9sacjSQipB' }}
-            style={styles.decorativeImage}
-            opacity={0.1}
+          {/* Decorative Gradient Component */}
+          <LinearGradient
+            colors={['rgba(212,175,55,0.05)', 'transparent']}
+            style={[styles.decorativeImage, { opacity: 0.5 }]}
           />
 
           {/* Close Action */}

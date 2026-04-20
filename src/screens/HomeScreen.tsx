@@ -9,6 +9,7 @@ import {
   Dimensions,
   StatusBar,
   Image,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -17,8 +18,10 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows, PrayerGradients, Pr
 import { DAILY_AYAHS } from '../services/quranApi';
 import { HijriDateBadge } from '../components/HijriDateBadge';
 import { HapticButton } from '../components/HapticButton';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../store/useAppStore';
-import { formatTime, getNextPrayer, getCurrentPrayerGradient, FALLBACK_TIMES, FALLBACK_HIJRI } from '../services/prayerTimes';
+import { formatTime, getNextPrayer, getCurrentPrayerGradient, FALLBACK_TIMES, FALLBACK_HIJRI, fetchPrayerTimes, getTimeUntil } from '../services/prayerTimes';
+import { refreshDeviceCoordinates } from '../services/locationManager';
 
 const { width } = Dimensions.get('window');
 
@@ -29,7 +32,7 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const { profile, prayerStatuses, setPrayerStatus, todayNiyyah, adhanSettings } = useAppStore();
+  const { profile, prayerStatuses, setPrayerStatus, todayNiyyah, adhanSettings, lastPrayerResetDate, resetDailyPrayers, incrementMilestone } = useAppStore();
   const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
   const [hijri, setHijri] = useState(FALLBACK_HIJRI);
   const [showNiyyah, setShowNiyyah] = useState(false);
@@ -37,6 +40,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [moodPromptPrayer, setMoodPromptPrayer] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [dailyAyah] = useState(() => DAILY_AYAHS[new Date().getDay() % DAILY_AYAHS.length]);
+  const [countdownStr, setCountdownStr] = useState('');
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const headerFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(30)).current;
@@ -54,20 +59,61 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const gradientColors = PrayerGradients[gradientName as keyof typeof PrayerGradients] ?? PrayerGradients.default;
   const nextPrayer = getNextPrayer(prayerTimes);
 
+  // Effect 1: Animations + live prayer times fetch (runs only on location change)
   useEffect(() => {
     Animated.parallel([
       Animated.timing(headerFade, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(cardSlide, { toValue: 0, duration: 500, delay: 200, useNativeDriver: true }),
     ]).start();
-  }, []);
+
+    const initLivePrayers = async () => {
+      if (profile.autoLocation) {
+        await refreshDeviceCoordinates();
+      }
+      const lat = useAppStore.getState().profile.latitude || 25.2048;
+      const lng = useAppStore.getState().profile.longitude || 55.2708;
+      const data = await fetchPrayerTimes(lat, lng);
+      setPrayerTimes(data.times);
+      setHijri(data.hijri);
+      setIsOfflineMode(!!data.isOfflineFallback);
+    };
+
+    initLivePrayers();
+  }, [profile.autoLocation]);
+
+  // Effect 2: Daily reset check — runs once on mount only
+  useEffect(() => {
+    if (lastPrayerResetDate !== new Date().toDateString()) {
+      resetDailyPrayers();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    // Ticker for next prayer
+    const updateTick = () => {
+      if (nextPrayer) {
+        setCountdownStr(`${getTimeUntil(nextPrayer.nextTime)} away`);
+      }
+    };
+    updateTick();
+    const interval = setInterval(updateTick, 60000);
+    return () => clearInterval(interval);
+  }, [nextPrayer]);
 
   const handlePrayerDone = (prayer: typeof PRAYERS[number]) => {
     setPrayerStatus(prayer, 'done');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setMoodPromptPrayer(prayer);
+
+    // Increment milestone counters
+    if (prayer === 'Fajr') {
+      incrementMilestone('fajrCount');
+    }
+
     // Check if all done
     const updated = { ...prayerStatuses, [prayer]: 'done' };
     if (Object.values(updated).every((s) => s === 'done')) {
+      incrementMilestone('streakDays');
       setTimeout(() => {
         setShowAllDone(true);
         setTimeout(() => setShowAllDone(false), 3000);
@@ -102,6 +148,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
+        {/* Offline Warning Banner */}
+        {isOfflineMode && (
+          <View style={{ backgroundColor: 'rgba(255, 100, 100, 0.2)', padding: 12, borderRadius: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="wifi-off" size={20} color="#ffcccc" style={{ marginRight: 8 }} />
+            <Text style={{ color: '#ffcccc', fontSize: 13, fontFamily: 'Plus Jakarta Sans', flex: 1 }}>
+              Network offline. Showing estimated local prayer times.
+            </Text>
+          </View>
+        )}
+
         {/* Header */}
         <Animated.View style={[styles.header, { opacity: headerFade }]}>
           <View style={styles.profileRow}>
@@ -135,9 +191,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         {/* Next Prayer Card */}
         <Animated.View style={[styles.nextPrayerCard, { transform: [{ translateY: cardSlide }], opacity: headerFade }]}>
-          <Image 
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuClPwJRa0MtcMu_7rpTpSdeoDyfqzpW_jkOlsqmQfthtxLA_fto653FQhN9SDUESe7kseBUf3Lg1vHuIrJjRZJQvuqa1Rjl3A9-zrPANkhmqYKaFNZaSUlp4hNdrqwReF0wy8wVGPBy9GMMtzmu4rSypoIkatXr3LiZUX7JE_K8xqrJ9SZzJProzLcDeU1dUOzawhAJOPmd9EQO8FcsQPsGy5jpJA61ACUPz4SXmFaBFHLIJZnka4mTEW7vMaBDGhQ5u4EhIEp97-y7' }} 
-            style={StyleSheet.absoluteFillObject} 
+          <LinearGradient
+            colors={['#0F6D5B', '#114a3e']}
+            style={StyleSheet.absoluteFillObject}
           />
           <LinearGradient
             colors={['transparent', 'rgba(15,109,91,0.2)', 'rgba(15,109,91,0.8)']}
@@ -149,7 +205,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 <Text style={styles.nextPrayerLabel}>NEXT PRAYER</Text>
                 <Text style={styles.nextPrayerName}>{nextPrayer.next}</Text>
                 <Text style={styles.nextPrayerTime}>
-                  {formatTime(nextPrayer.nextTime)} · {getNextPrayer(prayerTimes) ? `${Math.floor((new Date(`2000/01/01 ${nextPrayer.nextTime}`).getTime() - Date.now()) / 60000)}m away` : ''}
+                  {formatTime(nextPrayer.nextTime)} · {countdownStr}
                 </Text>
               </View>
               <HapticButton
@@ -165,14 +221,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           {[
-            { icon: '📖', label: 'Quran', screen: 'Quran' },
-            { icon: '🤲', label: 'Duas', screen: 'Duas' },
+            { icon: '📖', label: 'Quran', screen: 'Root', params: { screen: 'QuranTab' } },
+            { icon: '🤲', label: 'Duas', screen: 'Root', params: { screen: 'DuasTab' } },
             { icon: '🧭', label: 'Qibla', screen: 'Qibla' },
             { icon: '📿', label: 'Dhikr', screen: 'Dhikr' },
           ].map((a) => (
             <HapticButton
               key={a.label}
-              onPress={() => navigation.navigate(a.screen)}
+              onPress={() => {
+                if (a.params) {
+                  navigation.navigate(a.screen as any, a.params);
+                } else {
+                  navigation.navigate(a.screen as any);
+                }
+              }}
               style={styles.quickActionItem}
             >
               <BlurView intensity={25} tint="light" style={styles.quickActionInner}>
@@ -276,12 +338,85 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      {/* Mood Prompt Modal */}
+      <Modal visible={!!moodPromptPrayer} transparent animationType="slide" onRequestClose={() => setMoodPromptPrayer(null)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setMoodPromptPrayer(null)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { width: '100%', paddingBottom: 40, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }]}>
+            <Text style={styles.modalTitle}>How did {moodPromptPrayer} feel?</Text>
+            <Text style={styles.modalSub}>Reflecting on your salah brings you closer to the present.</Text>
+            
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginVertical: 20 }}>
+              {[
+                { key: 'connected', label: 'Connected', icon: '✨' },
+                { key: 'present', label: 'Present', icon: '🍃' },
+                { key: 'distracted', label: 'Distracted', icon: '🌪️' },
+                { key: 'rushed', label: 'Rushed', icon: '⏱️' },
+                { key: 'emotional', label: 'Emotional', icon: '💧' },
+              ].map(m => (
+                <TouchableOpacity
+                  key={m.key}
+                  style={styles.moodBtn}
+                  onPress={() => {
+                    if (moodPromptPrayer) {
+                      useAppStore.getState().setPrayerMood(moodPromptPrayer as any, m.key as any);
+                    }
+                    setMoodPromptPrayer(null);
+                  }}
+                >
+                  <Text style={{ fontSize: 24, marginBottom: 4 }}>{m.icon}</Text>
+                  <Text style={{ fontSize: 12, color: Colors.textDark, fontWeight: '600' }}>{m.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity onPress={() => setMoodPromptPrayer(null)}>
+              <Text style={{ color: Colors.textLight, fontSize: 14 }}>Skip</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  moodBtn: {
+    padding: 15,
+    backgroundColor: 'rgba(15,109,91,0.05)',
+    borderRadius: 16,
+    alignItems: 'center',
+    width: '30%',
+    borderWidth: 1,
+    borderColor: 'rgba(15,109,91,0.1)',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: width * 0.85,
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    ...Shadows.lg,
+  },
+  modalTitle: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textDark,
+    marginBottom: Spacing.sm,
+  },
+  modalSub: {
+    fontSize: Typography.sizes.sm,
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  container: { flex: 1, backgroundColor: Colors.background },
   scroll: { flex: 1 },
   content: { paddingTop: 60, paddingHorizontal: Spacing.base },
 

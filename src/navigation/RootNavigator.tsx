@@ -14,9 +14,10 @@ import { SetNiyyahScreen } from '../screens/SetNiyyahScreen';
 import { SukoonScreen } from '../screens/SukoonScreen';
 import { DhikrScreen } from '../screens/DhikrScreen';
 import { QiblaScreen } from '../screens/QiblaScreen';
-import { RuhaniScreen } from '../screens/RuhaniScreen';
 import { AdhanSettingsScreen } from '../screens/AdhanSettingsScreen';
-import { OneMinuteModal } from '../screens/OneMinuteModal';
+import { OneMinuteAllahScreen } from '../screens/OneMinuteAllahScreen';
+import { BreathingDhikrScreen } from '../screens/BreathingDhikrScreen';
+import { AdhanAlertScreen } from '../screens/AdhanAlertScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { QuranScreen } from '../screens/QuranScreen';
 import { PrayersScreen } from '../screens/PrayersScreen';
@@ -25,7 +26,6 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { QuranReader } from '../screens/QuranReader';
 
 // Placeholder standard screens for tabs before we build them fully
-const PlaceholderScreen = () => <View style={{ flex: 1, backgroundColor: Colors.background }} />;
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -81,9 +81,13 @@ const MainTabs = () => {
   );
 };
 
+import { createNavigationContainerRef } from '@react-navigation/native';
+
+export const navigationRef = createNavigationContainerRef<any>();
+
 export const RootNavigator = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
         {/* Onboarding Flow */}
         <Stack.Screen name="Splash" component={SplashScreen} />
@@ -92,7 +96,6 @@ export const RootNavigator = () => {
         <Stack.Screen name="Sukoon" component={SukoonScreen} />
         <Stack.Screen name="Dhikr" component={DhikrScreen} />
         <Stack.Screen name="Qibla" component={QiblaScreen} />
-        <Stack.Screen name="Ruhani" component={RuhaniScreen} />
         <Stack.Screen name="AdhanSettings" component={AdhanSettingsScreen} />
         
         {/* Main App */}
@@ -106,8 +109,18 @@ export const RootNavigator = () => {
         />
         <Stack.Screen
           name="OneMinute"
-          component={OneMinuteModal}
-          options={{ presentation: 'transparentModal', animation: 'fade_from_bottom' }}
+          component={OneMinuteAllahScreen}
+          options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }}
+        />
+        <Stack.Screen
+          name="AdhanAlert"
+          component={AdhanAlertScreen}
+          options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="BreathingDhikr"
+          component={BreathingDhikrScreen}
+          options={{ presentation: 'fullScreenModal', animation: 'fade' }}
         />
         {/* Quran Reader (full screen) */}
         <Stack.Screen

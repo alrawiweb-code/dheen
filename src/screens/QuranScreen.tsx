@@ -6,11 +6,11 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
+  Switch,
   ActivityIndicator,
   Image,
   StatusBar,
   Modal,
-  Switch,
   Linking,
   AppState,
   Platform,
@@ -33,11 +33,11 @@ const BADGE = {
 export const QuranScreen = () => {
   const navigation = useNavigation<any>();
   const { 
-    profile, 
+    profile,
     lastReading,
     playTranslationAudio, setPlayTranslationAudio,
     translationLang, setTranslationLang,
-    languagePacks
+    languagePacks,
   } = useAppStore();
 
   const [surahs, setSurahs] = useState<SurahInfo[]>([]);
@@ -243,12 +243,8 @@ export const QuranScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.avatar}>
-            <Image
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-_i0yhx0q3H5ZevVAVICnWjiGnkxy53EGyvkkQFCDhCkVAn1iC1wBCgBFHYyzOw5P07Codpm7oBVOcZl_mD0z4ydmd-QR1IWdjq-y0lMSMgL1NiOkmacdz-F0sTb_Ev9PW4acjFlBV19hFEh2CFX46ECI7iP_70-Dd7LSfzFAIMXlxKytZCI1w-YlfrZNUjCpktn6hWx-wesAF4XZlFiydqAAWHUOKQcDfL-Cx3JUoutuwp5SFUkF9Nx7YdIaOMVh6W_VN5Z_p77l' }}
-              style={StyleSheet.absoluteFillObject}
-            />
+             <Text style={{color: Colors.primary, fontSize: 16, fontWeight: 'bold'}}>{profile?.name?.[0]?.toUpperCase() || 'A'}</Text>
           </View>
-          <Text style={styles.dateText}>14 Shawwal 1446</Text>
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.premiumText}>NOOR</Text>
@@ -303,17 +299,6 @@ export const QuranScreen = () => {
         />
       )}
 
-      {/* FAB: Ruhani */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('Ruhani')}
-      >
-        <LinearGradient
-          colors={['#745c00', '#ffe088']}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <MaterialIcons name="auto-awesome" size={28} color={Colors.textDark} />
-      </TouchableOpacity>
 
       {/* ── Settings Modal ── */}
       <Modal visible={showSettings} transparent animationType="slide">
@@ -554,4 +539,16 @@ const styles = StyleSheet.create({
   voiceWarningText: { fontFamily: 'Manrope', fontSize: 12, color: '#92400e', marginBottom: 8, lineHeight: 18 },
   voiceInstallBtn: { backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#fcd34d' },
   voiceInstallBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '700', color: '#b45309' },
+  locationInput: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eae8e3',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 14,
+    color: Colors.textDark,
+    marginBottom: 8,
+  },
 });
