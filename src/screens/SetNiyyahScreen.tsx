@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Image,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,9 +28,11 @@ export const SetNiyyahScreen = ({ navigation }: any) => {
 
   const handleSetNiyyah = () => {
     const finalNiyyah = customNiyyah.trim() || selectedNiyyah;
-    if (finalNiyyah) {
-      setNiyyah(finalNiyyah);
+    if (!finalNiyyah) {
+      Alert.alert('Empty Intention', 'Please select or write your intention before saving.');
+      return;
     }
+    setNiyyah(finalNiyyah);
     navigation.goBack();
   };
 

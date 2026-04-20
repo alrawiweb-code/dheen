@@ -32,7 +32,7 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const { profile, prayerStatuses, setPrayerStatus, todayNiyyah, adhanSettings, lastPrayerResetDate, resetDailyPrayers, incrementMilestone } = useAppStore();
+  const { profile, prayerStatuses, setPrayerStatus, todayNiyyah, adhanSettings, lastPrayerResetDate, resetDailyPrayers, incrementMilestone, resetNiyyahIfNewDay } = useAppStore();
   const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
   const [hijri, setHijri] = useState(FALLBACK_HIJRI);
   const [showNiyyah, setShowNiyyah] = useState(false);
@@ -86,6 +86,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (lastPrayerResetDate !== new Date().toDateString()) {
       resetDailyPrayers();
     }
+    // Reset niyyah if it's from a previous day
+    resetNiyyahIfNewDay();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

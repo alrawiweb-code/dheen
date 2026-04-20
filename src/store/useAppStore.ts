@@ -55,7 +55,9 @@ export interface AppState {
 
   // Niyyah
   todayNiyyah: string;
+  niyyahDate: string; // YYYY-MM-DD — used to auto-clear on new day
   setNiyyah: (niyyah: string) => void;
+  resetNiyyahIfNewDay: () => void;
 
   lastPrayerResetDate: string;
   prayerStatuses: Record<Prayer, PrayerStatus>;
@@ -147,7 +149,18 @@ export const useAppStore = create<AppState>()(
     set((state) => ({ profile: { ...state.profile, ...profile } })),
 
   todayNiyyah: '',
-  setNiyyah: (niyyah) => set({ todayNiyyah: niyyah }),
+  niyyahDate: '',
+  setNiyyah: (niyyah) => set({
+    todayNiyyah: niyyah,
+    niyyahDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+  }),
+  resetNiyyahIfNewDay: () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { niyyahDate } = useAppStore.getState();
+    if (niyyahDate !== today) {
+      set({ todayNiyyah: '', niyyahDate: '' });
+    }
+  },
 
   prayerStatuses: {
     Fajr: 'pending',
