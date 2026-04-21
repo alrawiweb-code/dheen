@@ -33,6 +33,7 @@ export const DhikrScreen = ({ navigation }: any) => {
   const phaseRef = useRef<'INHALE' | 'EXHALE'>('INHALE');
 
   const [dhikrIndex, setDhikrIndex] = useState(0);
+  const [dhikrCount, setDhikrCount] = useState(0);
   const currentDhikr = DHIKR_LIST[dhikrIndex];
   
   const { profile } = useAppStore();
@@ -115,7 +116,10 @@ export const DhikrScreen = ({ navigation }: any) => {
             duration: 4000,
             useNativeDriver: true,
           }).start(({ finished }) => {
-            if (finished && isPlaying) runCycle();
+            if (finished && isPlaying) {
+              setDhikrCount(c => c + 1);
+              runCycle();
+            }
           });
         });
       };
@@ -125,6 +129,7 @@ export const DhikrScreen = ({ navigation }: any) => {
       pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
       setPhase('INHALE');
+      setDhikrCount(0);
     }
 
     return () => {
@@ -175,9 +180,12 @@ export const DhikrScreen = ({ navigation }: any) => {
               <Text style={styles.dhikrArabic}>{currentDhikr.arabic}</Text>
             </View>
             <View style={styles.progressDots}>
-              <View style={[styles.dot, { opacity: 1 }]} />
-              <View style={[styles.dot, { opacity: 0.4 }]} />
-              <View style={[styles.dot, { opacity: 0.2 }]} />
+              <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 28, fontWeight: '800', color: '#fff', marginTop: 8 }}>
+                {dhikrCount}
+              </Text>
+              <Text style={{ fontFamily: 'Manrope', fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 2 }}>
+                CYCLES
+              </Text>
             </View>
           </BlurView>
 

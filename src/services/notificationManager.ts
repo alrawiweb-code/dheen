@@ -117,6 +117,21 @@ export const syncPrayerNotifications = async (customTimes?: PrayerTimes) => {
       },
       trigger: triggerDate,
     });
+
+    // Schedule pre-alert if configured
+    if (prayerConfig.preAlert > 0) {
+      const preAlertDate = new Date(triggerDate.getTime() - prayerConfig.preAlert * 60 * 1000);
+      if (preAlertDate > now) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `${prayer} in ${prayerConfig.preAlert} minutes`,
+            body: `Prepare for ${prayer} prayer`,
+            data: { intent: 'pre_alert', prayer },
+          },
+          trigger: preAlertDate,
+        });
+      }
+    }
   }
 };
 

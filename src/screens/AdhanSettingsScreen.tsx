@@ -347,6 +347,40 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           })}
         </View>
 
+        {/* ── Pre-Alert ── */}
+        <Text style={styles.sectionLabel}>PRE-ALERT REMINDER</Text>
+        <View style={[styles.masterCard, { marginBottom: Spacing['3xl'] }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.masterTitle}>Remind me before prayer</Text>
+            <Text style={styles.masterSub}>Get a heads-up before the adhan plays</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {([0, 5, 10, 15] as const).map((mins) => {
+              const isSelected = adhanSettings.prayers.Fajr.preAlert === mins;
+              return (
+                <TouchableOpacity
+                  key={mins}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: isSelected ? Colors.primary : '#eae8e3',
+                  }}
+                  onPress={async () => {
+                    updateAllPrayers({ preAlert: mins });
+                    await resync();
+                  }}
+                >
+                  <Text style={{
+                    fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '700',
+                    color: isSelected ? '#fff' : Colors.textMuted,
+                  }}>
+                    {mins === 0 ? 'Off' : `${mins}m`}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={{ height: 140 }} />
       </ScrollView>
 

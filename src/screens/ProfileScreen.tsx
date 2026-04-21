@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,8 +32,8 @@ const BASE_MOODS = [
   'rgba(0,83,68,0.7)', 'rgba(0,83,68,0.2)', 'rgba(0,83,68,0.9)',
 ];
 
-export const ProfileScreen = () => {
-  const { profile, milestones, prayerMoods } = useAppStore();
+export const ProfileScreen = ({ navigation }: any) => {
+  const { profile, milestones, prayerMoods, todayNiyyah } = useAppStore();
 
   const totalPrayers = milestones.fajrCount + milestones.tahajjudCount; // Simplified heuristic
   const sukoonEntries = milestones.sukoonCount;
@@ -123,11 +124,23 @@ export const ProfileScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Intentions This Week</Text>
           <View style={styles.intentionList}>
-            <View style={{ padding: 30, backgroundColor: 'rgba(15,109,91,0.05)', borderRadius: 20, alignItems: 'center' }}>
-              <Text style={{ fontSize: 32, marginBottom: 8 }}>🧭</Text>
-              <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.primary }}>No active intentions</Text>
-              <Text style={{ fontFamily: 'Manrope', fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginTop: 4 }}>Set an intention from the Home Screen to build a meaningful habit.</Text>
-            </View>
+            {todayNiyyah ? (
+              <View style={[styles.intentionCard, { backgroundColor: 'rgba(15,109,91,0.05)', borderRadius: 20, padding: 20 }]}>
+                <View style={styles.intentionIconWudu}>
+                  <MaterialIcons name="emoji-objects" size={20} color={Colors.primary} />
+                </View>
+                <View style={styles.intentionContent}>
+                  <Text style={styles.intentionTitle}>{todayNiyyah}</Text>
+                  <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.textMuted, marginTop: 4 }}>Today's intention</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={{ padding: 30, backgroundColor: 'rgba(15,109,91,0.05)', borderRadius: 20, alignItems: 'center' }}>
+                <Text style={{ fontSize: 32, marginBottom: 8 }}>🧭</Text>
+                <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.primary }}>No active intentions</Text>
+                <Text style={{ fontFamily: 'Manrope', fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginTop: 4 }}>Set an intention from the Home Screen to build a meaningful habit.</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -179,7 +192,13 @@ export const ProfileScreen = () => {
           </View>
           <Text style={styles.zakatDesc}>Purify your wealth by calculating your mandatory charity contribution.</Text>
           <GradientCTA 
-            onPress={() => {}} 
+            onPress={() => {
+              Alert.alert(
+                'Zakat Calculator',
+                'Zakat is due on wealth held for one lunar year above the nisab (minimum threshold). The current gold nisab is approximately 85g of gold. Zakat rate is 2.5% of total eligible wealth.\n\nFor a full calculation, visit an Islamic finance resource.',
+                [{ text: 'Understood', style: 'default' }]
+              );
+            }} 
             title="Calculate Now" 
             colors={[Colors.secondary, '#5a4800']} 
             style={styles.zakatBtn} 

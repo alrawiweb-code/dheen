@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Speech from 'expo-speech';
 import { Colors, Typography, NativeSpacing as Spacing, BorderRadius, Shadows } from '../theme';
 import { useAppStore } from '../store/useAppStore';
 
@@ -92,6 +93,10 @@ export const DuasScreen = ({ navigation }: any) => {
   // Curated list state
   const [activeCategory, setActiveCategory] = useState('Morning');
   const [searchQuery, setSearchQuery] = useState('');
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+
+  // Stop speech on unmount
+  useEffect(() => { return () => { Speech.stop(); }; }, []);
 
   // Personal duas state
   const [personalDuas, setPersonalDuas] = useState<PersonalDua[]>([]);
@@ -101,6 +106,23 @@ export const DuasScreen = ({ navigation }: any) => {
   const [editingDua, setEditingDua] = useState<PersonalDua | null>(null);
   const [inputTitle, setInputTitle] = useState('');
   const [inputText, setInputText] = useState('');
+
+  // ── Speak curated dua ──────────────────────────────────────────────────────
+  const handleSpeak = useCallback((dua: typeof DUAS[0]) => {
+    if (speakingId === dua.id) {
+      Speech.stop();
+      setSpeakingId(null);
+      return;
+    }
+    Speech.stop();
+    setSpeakingId(dua.id);
+    Speech.speak(dua.arabic, {
+      language: 'ar-SA',
+      onDone: () => setSpeakingId(null),
+      onError: () => setSpeakingId(null),
+      onStopped: () => setSpeakingId(null),
+    });
+  }, [speakingId]);
 
   // ── Load on mount ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -346,8 +368,13 @@ export const DuasScreen = ({ navigation }: any) => {
                     </View>
                     <TouchableOpacity
                       style={[styles.playBtn, isSoft && styles.playBtnSoft, isOutlined && styles.playBtnOutlined]}
+                      onPress={() => handleSpeak(dua)}
                     >
-                      <MaterialIcons name="play-arrow" size={24} color={isSoft ? Colors.primary : '#fff'} />
+                      <MaterialIcons
+                        name={speakingId === dua.id ? 'stop' : 'play-arrow'}
+                        size={24}
+                        color={isSoft ? Colors.primary : '#fff'}
+                      />
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.arabicText}>{dua.arabic}</Text>

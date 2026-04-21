@@ -100,8 +100,16 @@ export const SukoonScreen = ({ navigation }: any) => {
                 placeholderTextColor="rgba(111,121,117,0.7)"
                 textAlignVertical="top"
               />
-              <TouchableOpacity style={styles.micBtn}>
-                <MaterialIcons name="mic" size={24} color={Colors.textDark} />
+              <TouchableOpacity
+                style={styles.micBtn}
+                onPress={() => setReflectionText('')}
+                disabled={!reflectionText}
+              >
+                <MaterialIcons
+                  name={reflectionText ? 'clear' : 'mic'}
+                  size={24}
+                  color={reflectionText ? Colors.primary : Colors.textDark}
+                />
               </TouchableOpacity>
             </View>
 
