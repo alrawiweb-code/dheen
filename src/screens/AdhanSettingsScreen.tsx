@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Switch,
   SafeAreaView,
-  Image,
   TextInput,
   ActivityIndicator,
   Alert,
