@@ -8,7 +8,6 @@ import {
   Animated,
   Dimensions,
   StatusBar,
-  Image,
   Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,8 +34,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { profile, prayerStatuses, setPrayerStatus, todayNiyyah, adhanSettings, lastPrayerResetDate, resetDailyPrayers, incrementMilestone, resetNiyyahIfNewDay } = useAppStore();
   const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
   const [hijri, setHijri] = useState(FALLBACK_HIJRI);
-  const [showNiyyah, setShowNiyyah] = useState(false);
-  const [niyyahText, setNiyyahText] = useState('');
   const [moodPromptPrayer, setMoodPromptPrayer] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [dailyAyah] = useState(() => DAILY_AYAHS[new Date().getDay() % DAILY_AYAHS.length]);

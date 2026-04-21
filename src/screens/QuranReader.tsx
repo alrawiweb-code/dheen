@@ -88,6 +88,7 @@ export const QuranReader = ({ route, navigation }: any) => {
   // ── Session persistence ───────────────────────────────────────
   const [hasSavedSession, setHasSavedSession] = useState(false);
   const savedStartIndexRef = useRef<number>(0);
+  const hasIncrementedRef = useRef<boolean>(false);
 
   useEffect(() => {
     AsyncStorage.getItem(`@quran_session_${surahNumber}`).then((val) => {
@@ -157,7 +158,11 @@ export const QuranReader = ({ route, navigation }: any) => {
           surahName: surah.englishName,
           ayahNumber: 1,
         });
-        incrementMilestone('quranDays');
+
+        if (!hasIncrementedRef.current) {
+          incrementMilestone('quranDays');
+          hasIncrementedRef.current = true;
+        }
 
         // After ayahs are set, scroll to saved position if resuming
         if (savedStartIndexRef.current > 0) {

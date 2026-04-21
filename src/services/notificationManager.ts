@@ -100,6 +100,26 @@ export const syncPrayerNotifications = async (customTimes?: PrayerTimes) => {
       triggerDate.setDate(triggerDate.getDate() + 1);
     }
 
+    if (settings.quietHoursEnabled) {
+      const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
+      const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
+      const triggerMins = hour * 60 + minute;
+      const fromMins = quietFromH * 60 + quietFromM;
+      const toMins = quietToH * 60 + quietToM;
+
+      const isInQuietHours = fromMins > toMins
+        ? (triggerMins >= fromMins || triggerMins < toMins)  // overnight quiet period
+        : (triggerMins >= fromMins && triggerMins < toMins);
+
+      if (isInQuietHours) {
+        // Allow Fajr during quiet if setting is enabled
+        if (!(prayer === 'Fajr' && settings.allowFajrDuringQuiet)) {
+          console.log(`[NotificationManager] ${prayer} blocked by quiet hours.`);
+          continue;
+        }
+      }
+    }
+
     console.log(`[NotificationManager] Scheduling ${prayer} at ${triggerDate.toLocaleString()}`);
     
     // The payload data helps us uniquely identify what to play on Foreground response

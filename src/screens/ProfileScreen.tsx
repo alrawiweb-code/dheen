@@ -58,9 +58,6 @@ export const ProfileScreen = ({ navigation }: any) => {
           </View>
           <Text style={styles.dateText}>{profile.name || 'Abdullah'}</Text>
         </View>
-        <View style={styles.headerRight}>
-          <Text style={styles.premiumText}>ETHEREAL</Text>
-        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

@@ -67,9 +67,7 @@ export const SukoonScreen = ({ navigation }: any) => {
             <Text style={{color: Colors.primary, fontSize: 16, fontWeight: 'bold'}}>{profile?.name?.[0]?.toUpperCase() || 'A'}</Text>
           </View>
         </View>
-        <TouchableOpacity>
-          <MaterialIcons name="brightness-5" size={24} color={Colors.primary} />
-        </TouchableOpacity>
+        <MaterialIcons name="brightness-5" size={24} color={Colors.primary} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

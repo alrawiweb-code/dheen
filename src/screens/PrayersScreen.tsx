@@ -29,7 +29,7 @@ const PRAYERS_META = [
 
 export const PrayersScreen = () => {
   const navigation = useNavigation<any>();
-  const { profile, prayerStatuses, setPrayerStatus } = useAppStore();
+  const { profile, prayerStatuses, setPrayerStatus, incrementMilestone } = useAppStore();
   const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
   const [hijri, setHijri] = useState(FALLBACK_HIJRI);
   const [loading, setLoading] = useState(true);
@@ -158,7 +158,16 @@ export const PrayersScreen = () => {
                     </View>
                   ) : isUpcoming ? (
                     <View style={styles.actionTokens}>
-                      <TouchableOpacity onPress={() => setPrayerStatus(prayer.id as any, 'done')}>
+                      <TouchableOpacity onPress={() => {
+                        setPrayerStatus(prayer.id as any, 'done');
+                        if (prayer.id === 'Fajr') {
+                          incrementMilestone('fajrCount');
+                        }
+                        const updated = { ...prayerStatuses, [prayer.id]: 'done' };
+                        if (Object.values(updated).every(s => s === 'done')) {
+                          incrementMilestone('streakDays');
+                        }
+                      }}>
                         <MaterialIcons name="radio-button-unchecked" size={24} color={Colors.textMuted} />
                       </TouchableOpacity>
                     </View>
