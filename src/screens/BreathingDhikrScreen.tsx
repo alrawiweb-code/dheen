@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Audio } from 'expo-av';
+
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   StatusBar,
   Dimensions,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Colors, Typography, Spacing, BorderRadius, DhikrOptions } from '../theme';
 import { HapticButton } from '../components/HapticButton';
+import { MaterialIcons } from '@expo/vector-icons';
+import { ScreenWrapper } from '../components/ScreenWrapper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,12 +24,11 @@ interface BreathingDhikrProps {
 }
 
 const COUNT_OPTIONS = [33, 99, 0] as const; // 0 = continuous
-const SOUND_OPTIONS = ['Rain 🌧', 'Wind 🌬', 'Silence 🔇'];
 
 export const BreathingDhikrScreen: React.FC<BreathingDhikrProps> = ({ navigation }) => {
   const [selectedDhikr, setSelectedDhikr] = useState(0);
   const [countTarget, setCountTarget] = useState<number>(33);
-  const [sound, setSound] = useState(0);
+
   const [count, setCount] = useState(0);
   const [phase, setPhase] = useState<'idle' | 'inhale' | 'exhale'>('idle');
   const [started, setStarted] = useState(false);
@@ -38,51 +40,6 @@ export const BreathingDhikrScreen: React.FC<BreathingDhikrProps> = ({ navigation
 
   const currentDhikr = DhikrOptions[selectedDhikr];
 
-  const soundRef = useRef<Audio.Sound | null>(null);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      soundRef.current?.unloadAsync();
-    };
-  }, []);
-
-  // Load/play sound when selection changes or session starts/stops
-  useEffect(() => {
-    const AMBIENT_SOURCES: Record<number, string | null> = {
-      0: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_88447d341b.mp3', // Rain
-      1: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3', // Wind
-      2: null, // Silence
-    };
-
-    const loadAudio = async () => {
-      if (soundRef.current) {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-
-      const uri = AMBIENT_SOURCES[sound];
-      if (!started || uri === null) return; // silence or session not started
-
-      try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: true,
-        });
-        const { sound: audioSound } = await Audio.Sound.createAsync(
-          { uri },
-          { isLooping: true, shouldPlay: true }
-        );
-        soundRef.current = audioSound;
-      } catch (e) {
-        console.warn('[BreathingDhikr] Audio error:', e);
-      }
-    };
-
-    loadAudio();
-  }, [sound, started]);
 
   useEffect(() => {
     if (!started) return;
@@ -152,10 +109,14 @@ export const BreathingDhikrScreen: React.FC<BreathingDhikrProps> = ({ navigation
 
   if (completed) {
     return (
-      <View style={styles.container}>
+      <ScreenWrapper>
         <LinearGradient colors={['#0D1F1A', '#0F6D5B']} style={StyleSheet.absoluteFill} />
         <View style={styles.completionContent}>
-          <Text style={styles.completionEmoji}>📿</Text>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={{ width: 72, height: 72, borderRadius: 16, marginBottom: 16 }}
+            resizeMode="contain"
+          />
           <Text style={styles.completionCount}>{count}</Text>
           <Text style={styles.completionDhikr}>{currentDhikr.transliteration}</Text>
           <Text style={styles.completionArabic}>{currentDhikr.arabic}</Text>
@@ -173,8 +134,8 @@ export const BreathingDhikrScreen: React.FC<BreathingDhikrProps> = ({ navigation
             <Text style={styles.doneText}>Done</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    );
+      </ScreenWrapper>
+);
   }
 
   return (
@@ -227,18 +188,7 @@ export const BreathingDhikrScreen: React.FC<BreathingDhikrProps> = ({ navigation
               ))}
             </View>
 
-            <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>Ambient Sound</Text>
-            <View style={styles.countRow}>
-              {SOUND_OPTIONS.map((s, i) => (
-                <TouchableOpacity
-                  key={s}
-                  onPress={() => setSound(i)}
-                  style={[styles.countChip, sound === i && styles.countChipSelected]}
-                >
-                  <Text style={[styles.countChipText, sound === i && { color: Colors.primary }]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+
           </View>
         )}
 
@@ -293,14 +243,14 @@ export const BreathingDhikrScreen: React.FC<BreathingDhikrProps> = ({ navigation
         )}
       </View>
     </View>
-  );
+);
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D1F1A' },
   backBtn: { position: 'absolute', top: 60, left: Spacing.base, zIndex: 10, padding: 8 },
   backText: { fontSize: 28, color: 'rgba(255,255,255,0.7)', fontWeight: Typography.weights.bold },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl, paddingTop: 60 },
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
 
   selectorSection: { width: '100%', gap: 6 },
   sectionLabel: { fontSize: Typography.sizes.sm, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 4 },

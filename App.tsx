@@ -1,9 +1,16 @@
-import React, { useCallback, useEffect } from 'react';
-import { View, StyleSheet, Text, ScrollView } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  ScrollView,
+  InteractionManager,
+  ActivityIndicator,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreenExpo from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
-import { initializeNotificationEngine } from './src/services/notificationManager';
+import { initializeNotificationEngine, syncPrayerNotifications } from './src/services/notificationManager';
 import { preloadAdhanAudio } from './src/services/adhanManager';
 import {
   ScheherazadeNew_400Regular,
@@ -11,16 +18,19 @@ import {
 } from '@expo-google-fonts/scheherazade-new';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from './src/store/useAppStore';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { AppState } from 'react-native';
 
 SplashScreenExpo.preventAutoHideAsync();
 
-// Suppress excessive logging in Production
+// Suppress excessive logging in production
 if (!__DEV__) {
   console.log = () => {};
   console.warn = () => {};
 }
 
+// ── Error Boundary ─────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
@@ -48,17 +58,48 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+// ── App ────────────────────────────────────────────────────────────────────
 export default function App() {
+  const splashHidden = useRef(false);
+
+  // ── Font loading ──────────────────────────────────────────────
+  const [fontsLoaded, fontError] = useFonts({
+    'ScheherazadeNew-Regular': ScheherazadeNew_400Regular,
+    'ScheherazadeNew-Bold': ScheherazadeNew_700Bold,
+  });
+  const fontsReady = fontsLoaded || !!fontError;
+
+  // ── Hide splash as soon as fonts are ready ────────────────────
+  // Quran data is NOT an app dependency — it loads on user action only.
   useEffect(() => {
-    const cleanupNotifications = initializeNotificationEngine();
-    // Kick off background download of all Adhan audio files so
-    // previews play instantly from local storage on every subsequent tap.
-    preloadAdhanAudio();
+    if (fontsReady && !splashHidden.current) {
+      splashHidden.current = true;
+      SplashScreenExpo.hideAsync().catch(() => {});
+    }
+  }, [fontsReady]);
+
+  // ── Background tasks (notifications, adhan) ───────────────────
+  useEffect(() => {
+    let cleanupNotifications: (() => void) | undefined;
+    const task = InteractionManager.runAfterInteractions(() => {
+      cleanupNotifications = initializeNotificationEngine();
+      preloadAdhanAudio();
+    });
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        syncPrayerNotifications();
+      }
+    });
+
     return () => {
-      cleanupNotifications();
+      task.cancel();
+      subscription.remove();
+      if (cleanupNotifications) cleanupNotifications();
     };
   }, []);
 
+  // ── Daily prayer reset ────────────────────────────────────────
   useEffect(() => {
     const checkDailyReset = async () => {
       try {
@@ -75,32 +116,26 @@ export default function App() {
     checkDailyReset();
   }, []);
 
-
-  // Load Scheherazade New — the only widely available font with
-  // full Quranic Unicode coverage (all tajweed marks, end-of-ayah ۝, etc.)
-  const [fontsLoaded, fontError] = useFonts({
-    'ScheherazadeNew-Regular': ScheherazadeNew_400Regular,
-    'ScheherazadeNew-Bold': ScheherazadeNew_700Bold,
-  });
-
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded || fontError) {
-      await SplashScreenExpo.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
-
-  // Keep splash screen up while fonts are loading
-  if (!fontsLoaded && !fontError) {
-    return null;
+  // ── Render: waiting for fonts ─────────────────────────────────
+  if (!fontsReady) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <StatusBar style="dark" translucent />
+        <ActivityIndicator size="large" color="#0f6d5b" />
+      </View>
+    );
   }
 
+  // ── Render: App ───────────────────────────────────────────────
   return (
-    <ErrorBoundary>
-      <View style={styles.container} onLayout={onLayoutRootView}>
-        <StatusBar style="light" translucent />
-        <RootNavigator />
-      </View>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <View style={styles.container}>
+          <StatusBar style="light" translucent />
+          <RootNavigator />
+        </View>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
@@ -108,5 +143,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FBF9F4',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

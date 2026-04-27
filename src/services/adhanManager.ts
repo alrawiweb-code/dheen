@@ -3,11 +3,11 @@ import { Vibration } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
 import { resolveAudioUri, downloadAndCache, isCached } from './audioCache';
 
-// Public Archive.org audio streams - Highly reliable and CORS friendly
+// Public Adhan audio streams from IslamCan
 export const ADHAN_SOURCES: Record<string, string> = {
-  makkah: 'https://ia801905.us.archive.org/16/items/AdhanMakkah/Adhan%20Makkah.mp3',
-  madinah: 'https://ia800405.us.archive.org/16/items/AdhanMadinah/Adhan%20Madinah.mp3',
-  alaqsa: 'https://ia601402.us.archive.org/16/items/AdhanAlAqsa/Adhan%20AlAqsa.mp3',
+  makkah: 'https://islamcan.com/audio/adhan/azan1.mp3',
+  madinah: 'https://islamcan.com/audio/adhan/azan2.mp3',
+  alaqsa: 'https://islamcan.com/audio/adhan/azan3.mp3',
 };
 
 // Global audio tracking reference
@@ -189,11 +189,6 @@ export const playAdhanPreview = async (
 
     // Hide spinner — audio is now loaded and playing
     onLoadingStatusChange?.(false);
-
-    // Skip 2s of Archive.org silence only when streaming remotely
-    if (!alreadyCached && audioUri.startsWith('http')) {
-      await sound.setPositionAsync(2000);
-    }
 
     // Auto-stop after 10 seconds explicitly managed by our global timeout reference
     shortAdhanTimeoutMap = setTimeout(async () => {

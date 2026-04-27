@@ -11,14 +11,14 @@ export interface Dua {
 }
 
 export const DuaCategories = [
-  { id: 'morning', label: 'Morning', emoji: '🌅' },
-  { id: 'evening', label: 'Evening', emoji: '🌙' },
-  { id: 'after_salah', label: 'After Salah', emoji: '🕌' },
-  { id: 'travel', label: 'Travel', emoji: '✈️' },
-  { id: 'protection', label: 'Protection', emoji: '🛡️' },
-  { id: 'gratitude', label: 'Gratitude', emoji: '🙏' },
-  { id: 'hardship', label: 'Hardship', emoji: '💪' },
-  { id: 'parents', label: 'Parents', emoji: '👨‍👩‍👧' },
+  { id: 'morning', label: 'Morning', icon: 'wb-twilight' },
+  { id: 'evening', label: 'Evening', icon: 'nightlight-round' },
+  { id: 'after_salah', label: 'After Salah', icon: 'mosque' },
+  { id: 'travel', label: 'Travel', icon: 'flight' },
+  { id: 'protection', label: 'Protection', icon: 'shield' },
+  { id: 'gratitude', label: 'Gratitude', icon: 'volunteer-activism' },
+  { id: 'hardship', label: 'Hardship', icon: 'fitness-center' },
+  { id: 'parents', label: 'Parents', icon: 'family-restroom' },
 ];
 
 export const DUAS: Dua[] = [

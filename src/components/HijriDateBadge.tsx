@@ -8,10 +8,15 @@ interface HijriDateBadgeProps {
   style?: ViewStyle;
 }
 
+const convertToArabicNumerals = (numStr: string) => {
+  const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return numStr.replace(/[0-9]/g, (w) => arabicNumbers[parseInt(w, 10)]);
+};
+
 export const HijriDateBadge: React.FC<HijriDateBadgeProps> = ({ hijri, style }) => {
   const label = hijri
-    ? `${hijri.day} ${hijri.month.en} ${hijri.year}`
-    : '14 Shawwal 1446';
+    ? `${convertToArabicNumerals(hijri.day)} ${hijri.month.ar} ${convertToArabicNumerals(hijri.year)} هـ`
+    : '١٤ شوال ١٤٤٦ هـ';
 
   return (
     <Text style={[styles.text, style]}>

@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  TouchableWithoutFeedback,
   Keyboard,
+  ScrollView,
   Image,
   Alert,
 } from 'react-native';
@@ -17,9 +17,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, NativeSpacing as Spacing, Shadows, NiyyahPresets } from '../theme';
 import { GradientCTA } from '../components/GradientCTA';
 import { useAppStore } from '../store/useAppStore';
+import { ScreenWrapper } from '../components/ScreenWrapper';
 
-// Extract predefined presets or use the ones from theme
-const PRESETS = ['For knowledge', 'For healing', 'For my family', 'For Allah alone'];
+// Use preset data from theme
+const PRESETS = NiyyahPresets;
 
 export const SetNiyyahScreen = ({ navigation }: any) => {
   const { setNiyyah } = useAppStore();
@@ -37,27 +38,34 @@ export const SetNiyyahScreen = ({ navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <ScreenWrapper style={styles.container} noHorizontalPadding withBottomInset={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.inner}>
           {/* Ambient Background Glows */}
-          <View style={styles.topRightGlow} />
-          <View style={styles.bottomRightGlow} />
-          <View style={styles.topLeftGlow} />
+          <View style={styles.topRightGlow} pointerEvents="none" />
+          <View style={styles.bottomRightGlow} pointerEvents="none" />
+          <View style={styles.topLeftGlow} pointerEvents="none" />
 
           {/* Decorative Gradient Component */}
           <LinearGradient
             colors={['rgba(212,175,55,0.05)', 'transparent']}
             style={[styles.decorativeImage, { opacity: 0.5 }]}
+            pointerEvents="none"
           />
 
           {/* Close Action */}
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => navigation.goBack()}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
           >
             <MaterialIcons name="close" size={24} color={Colors.background} />
           </TouchableOpacity>
@@ -79,18 +87,21 @@ export const SetNiyyahScreen = ({ navigation }: any) => {
               <Text style={styles.presetLabel}>SELECT AN INTENTION</Text>
               <View style={styles.presetGrid}>
                 {PRESETS.map((preset) => {
-                  const isSelected = selectedNiyyah === preset;
+                  const isSelected = selectedNiyyah === preset.label;
                   return (
                     <TouchableOpacity
-                      key={preset}
+                      key={preset.label}
                       style={[styles.presetBadge, isSelected && styles.presetBadgeSelected]}
-                      onPress={() => setSelectedNiyyah(preset)}
+                      onPress={() => setSelectedNiyyah(preset.label)}
                     >
-                      <Text
-                        style={[styles.presetText, isSelected && styles.presetTextSelected]}
-                      >
-                        {preset}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <MaterialIcons name={preset.icon as any} size={16} color={isSelected ? '#ffe088' : 'rgba(255,255,255,0.5)'} />
+                        <Text
+                          style={[styles.presetText, isSelected && styles.presetTextSelected]}
+                        >
+                          {preset.label}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -112,12 +123,13 @@ export const SetNiyyahScreen = ({ navigation }: any) => {
                     if (val.length > 0) setSelectedNiyyah(''); // Clear preset if typing custom
                   }}
                 />
-                <MaterialIcons
-                  name="edit"
-                  size={20}
-                  color="rgba(255,255,255,0.2)"
-                  style={styles.inputIcon}
-                />
+                <View style={styles.iconContainer}>
+                  <MaterialIcons
+                    name="edit"
+                    size={18}
+                    color="rgba(255,255,255,0.3)"
+                  />
+                </View>
               </View>
             </View>
 
@@ -138,8 +150,9 @@ export const SetNiyyahScreen = ({ navigation }: any) => {
             </View>
           </View>
         </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenWrapper>
   );
 };
 
@@ -186,8 +199,8 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 60,
-    left: 24,
+    top: Platform.OS === 'ios' ? 60 : 40,
+    left: 20,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -200,12 +213,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 120,
     paddingHorizontal: 24,
     zIndex: 10,
   },
   header: {
-    marginBottom: 40,
+    marginBottom: 32,
   },
   overhead: {
     fontFamily: 'Plus Jakarta Sans',
@@ -275,26 +287,31 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     position: 'relative',
+    marginTop: 8,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
     color: '#FBF9F4',
     fontFamily: 'Manrope',
-    fontSize: 16,
-    minHeight: 120,
+    fontSize: 15,
+    minHeight: 100,
+    paddingRight: 48, // Prevent text from colliding with the icon
   },
-  inputIcon: {
+  iconContainer: {
     position: 'absolute',
-    bottom: 16,
-    right: 24,
+    top: 18,
+    right: 18,
   },
   ctaWrapper: {
     alignItems: 'center',
-    paddingTop: 24,
-    marginBottom: 40,
+    paddingTop: 16,
+    marginTop: 'auto',
   },
   ctaButton: {
     width: '100%',

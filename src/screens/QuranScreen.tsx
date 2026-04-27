@@ -15,6 +15,7 @@ import {
   AppState,
   Platform,
 } from 'react-native';
+// Image already imported above — logo is loaded via require below
 import * as Speech from 'expo-speech';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,9 @@ import { Colors, NativeSpacing as Spacing, Shadows, Typography } from '../theme'
 import { fetchSurahList, SurahInfo } from '../services/quranApi';
 import { useAppStore, TranslationLangCode } from '../store/useAppStore';
 import { downloadLanguagePack } from '../services/translationManager';
+import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { quranAudioDownloadManager, AudioDownloadState } from '../services/quranAudioDownloadManager';
 
 // ─── Revelation badge colors ──────────────────────────────────────
 const BADGE = {
@@ -40,6 +44,9 @@ export const QuranScreen = () => {
     languagePacks,
   } = useAppStore();
 
+  const bottomInset = useScreenBottomInset();
+  const insets = useSafeAreaInsets();
+
   const [surahs, setSurahs] = useState<SurahInfo[]>([]);
   const [filtered, setFiltered] = useState<SurahInfo[]>([]);
   const [query, setQuery] = useState('');
@@ -47,6 +54,11 @@ export const QuranScreen = () => {
   const [error, setError] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [deviceSpeechSupported, setDeviceSpeechSupported] = useState<Record<string, boolean>>({});
+  const [audioDLState, setAudioDLState] = useState<AudioDownloadState>({ status: 'idle' });
+
+  useEffect(() => {
+    return quranAudioDownloadManager.subscribe(setAudioDLState);
+  }, []);
 
   const checkVoices = useCallback(async () => {
     try {
@@ -236,7 +248,7 @@ export const QuranScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
       {/* Top Header */}
@@ -247,7 +259,11 @@ export const QuranScreen = () => {
           </View>
         </View>
         <View style={styles.headerRight}>
-          <Text style={styles.premiumText}>NOOR</Text>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
           <TouchableOpacity onPress={() => setShowSettings(true)}>
             <MaterialIcons name="settings" size={24} color={Colors.primary} />
           </TouchableOpacity>
@@ -290,8 +306,7 @@ export const QuranScreen = () => {
               <Text style={styles.emptyText}>No surahs match "{query}"</Text>
             </View>
           }
-          ListFooterComponent={<View style={{ height: 120 }} />}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 80 }]}
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
           maxToRenderPerBatch={30}
@@ -386,11 +401,70 @@ export const QuranScreen = () => {
               })}
             </View>
 
+            {/* Offline Quran Audio */}
+            <Text style={[styles.settingTitle, { marginTop: 32, marginBottom: 8 }]}>
+              Offline Quran Audio
+            </Text>
+            <Text style={[styles.settingDesc, { marginBottom: 16 }]}>
+              Download the entire Quran recitation (~500MB) to listen without an internet connection. Please keep the app open during the download.
+            </Text>
+
+            <View style={styles.audioDlCard}>
+              {audioDLState.status === 'idle' || audioDLState.status === 'error' ? (
+                <View>
+                  {audioDLState.status === 'error' && (
+                    <Text style={{ fontFamily: 'Manrope', fontSize: 13, color: '#f87171', marginBottom: 12 }}>
+                      {audioDLState.message}
+                    </Text>
+                  )}
+                  <TouchableOpacity
+                    style={styles.downloadBtn}
+                    onPress={() => quranAudioDownloadManager.start()}
+                  >
+                    <MaterialIcons name="cloud-download" size={20} color="#fff" />
+                    <Text style={styles.downloadBtnText}>
+                      {audioDLState.status === 'error' ? 'Retry Download' : 'Download All Audio'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : audioDLState.status === 'downloading' ? (
+                <View>
+                  <View style={styles.dlProgressHeader}>
+                    <Text style={styles.dlProgressText}>
+                      Downloading: {Math.round((audioDLState.bytesDownloaded / 1024 / 1024))} / {Math.round((audioDLState.bytesTotal / 1024 / 1024))} MB
+                    </Text>
+                    <Text style={styles.dlProgressPct}>
+                      {Math.round((audioDLState.progress / audioDLState.total) * 100)}%
+                    </Text>
+                  </View>
+                  <View style={styles.dlProgressBarBg}>
+                    <View style={[styles.dlProgressBarFill, { width: `${(audioDLState.progress / audioDLState.total) * 100}%` }]} />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.dlAbortBtn}
+                    onPress={() => quranAudioDownloadManager.abort()}
+                  >
+                    <MaterialIcons name="cancel" size={16} color="#ef4444" />
+                    <Text style={styles.dlAbortText}>Cancel Download</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.dlDoneRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <MaterialIcons name="check-circle" size={24} color={Colors.primary} />
+                    <Text style={styles.dlDoneText}>Ready for offline listening</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => quranAudioDownloadManager.deleteAll()} style={{ padding: 8 }}>
+                    <MaterialIcons name="delete-outline" size={24} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
           </View>
         </View>
       </Modal>
-
-    </View>
+    </ScreenWrapper>
   );
 };
 
@@ -399,7 +473,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
 
   header: {
-    paddingTop: 60,
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.md,
     flexDirection: 'row',
@@ -409,10 +482,10 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eae8e3', overflow: 'hidden' },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eae8e3', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   dateText: { fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: '700', color: Colors.primary },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  premiumText: { color: Colors.secondary, fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
+  headerLogo: { width: 32, height: 32, borderRadius: 8 },
 
   scrollContent: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl },
 
@@ -539,6 +612,21 @@ const styles = StyleSheet.create({
   voiceWarningText: { fontFamily: 'Manrope', fontSize: 12, color: '#92400e', marginBottom: 8, lineHeight: 18 },
   voiceInstallBtn: { backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#fcd34d' },
   voiceInstallBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '700', color: '#b45309' },
+  
+  // Offline Audio Download
+  audioDlCard: { backgroundColor: '#f9f8f6', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
+  downloadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, paddingVertical: 14, borderRadius: 12 },
+  downloadBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '700', color: '#fff' },
+  dlProgressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  dlProgressText: { fontFamily: 'Manrope', fontSize: 13, color: Colors.textDark, fontWeight: '600' },
+  dlProgressPct: { fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: Colors.primary, fontWeight: '800' },
+  dlProgressBarBg: { height: 8, backgroundColor: 'rgba(15,109,91,0.1)', borderRadius: 4, overflow: 'hidden', marginBottom: 16 },
+  dlProgressBarFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 4 },
+  dlAbortBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
+  dlAbortText: { fontFamily: 'Plus Jakarta Sans', fontSize: 13, fontWeight: '700', color: '#ef4444' },
+  dlDoneRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dlDoneText: { fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '700', color: Colors.primary },
+  
   locationInput: {
     backgroundColor: '#fff',
     borderRadius: 8,

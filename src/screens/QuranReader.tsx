@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
@@ -11,6 +10,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
+import { FlashList, FlashListRef } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -19,8 +19,13 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../theme';
 import { fetchSurah, Ayah } from '../services/quranApi';
+import { removeBismillahFromText } from '../utils/bismillah';
 import { useAppStore } from '../store/useAppStore';
 import { HapticButton } from '../components/HapticButton';
+import { quranAudioDownloadManager } from '../services/quranAudioDownloadManager';
+import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -43,17 +48,21 @@ interface QueueItem {
 // CONSTANTS / HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ayahUrl = (globalNum: number) =>
+const CDN_AYAH_URL = (globalNum: number) =>
   `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${globalNum}.mp3`;
 
-const BISMILLAH_URL = ayahUrl(1);
+/** Returns local URI if cached, falls back to CDN URL */
+const ayahUrl = async (globalNum: number): Promise<string> =>
+  quranAudioDownloadManager.getBestUri(globalNum);
+
+const BISMILLAH_URL = CDN_AYAH_URL(1);
 const NO_BISMILLAH_SURAHS = new Set([9]);
 
-function buildQueue(
+async function buildQueue(
   surahNumber: number,
   ayahs: Ayah[],
   startIndex: number,
-): QueueItem[] {
+): Promise<QueueItem[]> {
   const queue: QueueItem[] = [];
 
   if (
@@ -61,12 +70,15 @@ function buildQueue(
     !NO_BISMILLAH_SURAHS.has(surahNumber) &&
     surahNumber !== 1
   ) {
-    queue.push({ url: BISMILLAH_URL, ayahNumber: null, numberInSurah: null });
+    // Use local bismillah (ayah 1) if available, otherwise CDN
+    const bismillahUri = await quranAudioDownloadManager.getBestUri(1);
+    queue.push({ url: bismillahUri, ayahNumber: null, numberInSurah: null });
   }
 
   for (let i = startIndex; i < ayahs.length; i++) {
     const a = ayahs[i];
-    queue.push({ url: ayahUrl(a.number), ayahNumber: a.number, numberInSurah: a.numberInSurah });
+    const url = await ayahUrl(a.number);
+    queue.push({ url, ayahNumber: a.number, numberInSurah: a.numberInSurah });
   }
 
   return queue;
@@ -75,6 +87,74 @@ function buildQueue(
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
+
+const AyahItem = React.memo(({
+  item,
+  isActive,
+  isThisPlaying,
+  isLoadingThis,
+  currentProgress,
+  onLongPress,
+  onPress
+}: {
+  item: Ayah;
+  isActive: boolean;
+  isThisPlaying: boolean;
+  isLoadingThis: boolean;
+  currentProgress: number;
+  onLongPress: (item: Ayah) => void;
+  onPress: (item: Ayah) => void;
+}) => {
+  return (
+    <TouchableOpacity
+      onLongPress={() => onLongPress(item)}
+      activeOpacity={0.88}
+      style={[styles.ayahBlock, isActive && styles.ayahBlockActive]}
+    >
+      <View style={styles.ayahHeaderRow}>
+        <View style={styles.ayahNumCircle}>
+          <Text style={styles.ayahNum}>{item.numberInSurah}</Text>
+        </View>
+
+        <TouchableOpacity
+          id={`audio-btn-${item.numberInSurah}`}
+          style={[styles.audioBtn, isActive && styles.audioBtnActive]}
+          onPress={() => onPress(item)}
+          activeOpacity={0.75}
+        >
+          {isLoadingThis ? (
+            <ActivityIndicator size="small" color={isActive ? '#fff' : Colors.primary} />
+          ) : (
+            <MaterialIcons
+              name={isThisPlaying ? 'pause' : 'play-arrow'}
+              size={20}
+              color={isActive ? '#fff' : Colors.primary}
+            />
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.arabicText}>
+        {item.text}
+      </Text>
+
+      {isActive && (
+        <View style={styles.miniProgressBg}>
+          <View style={[styles.miniProgressFill, { width: `${Math.round(currentProgress * 100)}%` as any }]} />
+        </View>
+      )}
+
+      {item.translation ? <Text style={styles.translationText}>{item.translation}</Text> : null}
+    </TouchableOpacity>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.item.number === nextProps.item.number &&
+         prevProps.item.text === nextProps.item.text &&
+         prevProps.isActive === nextProps.isActive &&
+         prevProps.isThisPlaying === nextProps.isThisPlaying &&
+         prevProps.isLoadingThis === nextProps.isLoadingThis &&
+         prevProps.currentProgress === nextProps.currentProgress;
+});
 
 export const QuranReader = ({ route, navigation }: any) => {
   const { surahNumber, surahName } = route.params;
@@ -118,8 +198,9 @@ export const QuranReader = ({ route, navigation }: any) => {
   const playIndexRef = useRef<number>(0);
   const isQueueActiveRef = useRef<boolean>(false);
   const isPausedRef = useRef<boolean>(false);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashListRef<Ayah>>(null);
   const playAyahRef = useRef<((index: number) => Promise<void>) | null>(null);
+  const playbackTokenRef = useRef<number>(0);
 
   // ── Audio UI state ───────────────────────────────────────────
   const [activeAyahNum, setActiveAyahNum] = useState<number | null>(null);
@@ -132,7 +213,11 @@ export const QuranReader = ({ route, navigation }: any) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedAyah, setSelectedAyah] = useState<Ayah | null>(null);
   const shimmerAnim = useRef(new Animated.Value(0)).current;
-  const { setAyahOfMyLife, setLastReading, isAdhanPlaying, incrementMilestone } = useAppStore();
+  const setAyahOfMyLife = useAppStore(state => state.setAyahOfMyLife);
+  const setLastReading = useAppStore(state => state.setLastReading);
+  const isAdhanPlaying = useAppStore(state => state.isAdhanPlaying);
+  const incrementMilestone = useAppStore(state => state.incrementMilestone);
+  const translationLang = useAppStore(state => state.translationLang);
 
   // Force-pause if system Adhan triggers globally
   useEffect(() => {
@@ -148,11 +233,16 @@ export const QuranReader = ({ route, navigation }: any) => {
   useEffect(() => {
     setLoading(true);
     setError(false);
-    fetchSurah(surahNumber)
-      .then(({ surah, ayahs: a }) => { 
-        setSurahInfo(surah); 
-        setAyahs(a); 
-        // Update last reading immediately to Ayah 1 upon loading
+
+    // Stop any playing audio before reloading for a new language
+    clearQueue();
+
+    const loadSurah = async () => {
+      try {
+        const { surah, ayahs: a } = await fetchSurah(surahNumber);
+        
+        setSurahInfo(surah);
+        setAyahs(a);
         setLastReading({
           surahNumber: surah.number,
           surahName: surah.englishName,
@@ -164,7 +254,6 @@ export const QuranReader = ({ route, navigation }: any) => {
           hasIncrementedRef.current = true;
         }
 
-        // After ayahs are set, scroll to saved position if resuming
         if (savedStartIndexRef.current > 0) {
           setTimeout(() => {
             flatListRef.current?.scrollToIndex({
@@ -174,10 +263,15 @@ export const QuranReader = ({ route, navigation }: any) => {
             });
           }, 300);
         }
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [surahNumber, setLastReading]);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSurah();
+  }, [surahNumber, translationLang, setLastReading]);
 
   useEffect(() => {
     try {
@@ -197,6 +291,7 @@ export const QuranReader = ({ route, navigation }: any) => {
   // ─────────────────────────────────────────────────────────────
 
   const clearQueue = useCallback(async () => {
+    playbackTokenRef.current += 1;
     isQueueActiveRef.current = false;
     queueRef.current = [];
     
@@ -281,6 +376,9 @@ export const QuranReader = ({ route, navigation }: any) => {
       }
       soundRef.current = null;
     }
+
+    playbackTokenRef.current += 1;
+    const currentToken = playbackTokenRef.current;
 
     try {
       console.log(`[QuranReader] Playing Arabic ayah ${item.ayahNumber || 'Bismillah'}`);
@@ -387,6 +485,15 @@ export const QuranReader = ({ route, navigation }: any) => {
           }
         },
       );
+      
+      // If the token changed during the await, it means clearQueue or another playAyah was called.
+      // We MUST abort this stale sound object immediately to prevent double playback leaks.
+      if (currentToken !== playbackTokenRef.current) {
+        console.log(`[QuranReader] Aborting stale audio playback for ayah ${item.ayahNumber}`);
+        sound.unloadAsync().catch(() => {});
+        return;
+      }
+
       soundRef.current = sound;
       setIsQueueLoading(false);
     } catch (_) {
@@ -404,7 +511,7 @@ export const QuranReader = ({ route, navigation }: any) => {
 
       if (ayahs.length === 0) return;
 
-      const queue = buildQueue(surahNumber, ayahs, startAyahIndex);
+      const queue = await buildQueue(surahNumber, ayahs, startAyahIndex);
       queueRef.current = queue;
       isQueueActiveRef.current = true;
       playIndexRef.current = 0;
@@ -525,52 +632,23 @@ export const QuranReader = ({ route, navigation }: any) => {
   // RENDER SINGLE AYAH
   // ─────────────────────────────────────────────────────────────
 
-  const renderAyah = ({ item }: { item: Ayah }) => {
+  const renderAyah = useCallback(({ item }: { item: Ayah }) => {
     const isActive = activeAyahNum === item.number;
     const isThisPlaying = isActive && !isPaused;
     const isLoadingThis = isQueueLoading && isActive;
 
     return (
-      <TouchableOpacity
-        onLongPress={() => handleLongPress(item)}
-        activeOpacity={0.88}
-        style={[styles.ayahBlock, isActive && styles.ayahBlockActive]}
-      >
-        <View style={styles.ayahHeaderRow}>
-          <View style={styles.ayahNumCircle}>
-            <Text style={styles.ayahNum}>{item.numberInSurah}</Text>
-          </View>
-
-          <TouchableOpacity
-            id={`audio-btn-${item.numberInSurah}`}
-            style={[styles.audioBtn, isActive && styles.audioBtnActive]}
-            onPress={() => handleAyahPress(item)}
-            activeOpacity={0.75}
-          >
-            {isLoadingThis ? (
-              <ActivityIndicator size="small" color={isActive ? '#fff' : Colors.primary} />
-            ) : (
-              <MaterialIcons
-                name={isThisPlaying ? 'pause' : 'play-arrow'}
-                size={20}
-                color={isActive ? '#fff' : Colors.primary}
-              />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.arabicText}>{item.text}</Text>
-
-        {isActive && (
-          <View style={styles.miniProgressBg}>
-            <View style={[styles.miniProgressFill, { width: `${Math.round(currentProgress * 100)}%` as any }]} />
-          </View>
-        )}
-
-        {item.translation ? <Text style={styles.translationText}>{item.translation}</Text> : null}
-      </TouchableOpacity>
+      <AyahItem
+        item={item}
+        isActive={isActive}
+        isThisPlaying={isThisPlaying}
+        isLoadingThis={isLoadingThis}
+        currentProgress={isActive ? currentProgress : 0}
+        onLongPress={handleLongPress}
+        onPress={handleAyahPress}
+      />
     );
-  };
+  }, [activeAyahNum, isPaused, isQueueLoading, currentProgress, handleLongPress, handleAyahPress]);
 
   // ─────────────────────────────────────────────────────────────
   // LIST HEADER
@@ -626,14 +704,17 @@ export const QuranReader = ({ route, navigation }: any) => {
         )}
       </TouchableOpacity>
     </View>
-  );
+);
 
   // ─────────────────────────────────────────────────────────────
   // MAIN RENDER
   // ─────────────────────────────────────────────────────────────
 
+  const bottomInset = useScreenBottomInset(false); // stack screen — no tab bar
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LinearGradient colors={['#F8F6F1', '#FFFFFF']} style={StyleSheet.absoluteFill} />
 
@@ -661,28 +742,24 @@ export const QuranReader = ({ route, navigation }: any) => {
             style={styles.retryBtn}
             onPress={() => {
               setError(false); setLoading(true);
-              fetchSurah(surahNumber).then(({ surah, ayahs: a }) => { setSurahInfo(surah); setAyahs(a); }).catch(() => setError(true)).finally(() => setLoading(false));
+              fetchSurah(surahNumber).then(({ surah, ayahs: a }) => { const cleaned = a.map((ay, idx) => idx === 0 && surahNumber !== 9 ? { ...ay, text: removeBismillahFromText(ay.text) } : ay); setSurahInfo(surah); setAyahs(cleaned); }).catch(() => setError(true)).finally(() => setLoading(false));
             }}
           >
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
+        <FlashList
           ref={flatListRef}
           data={ayahs}
-          getItemLayout={(data, index) => ({
-            length: 180, // approximate ayah card height
-            offset: 180 * index,
-            index,
-          })}
+          estimatedItemSize={150}
           keyExtractor={(a) => String(a.number)}
           renderItem={renderAyah}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: bottomInset + (isAnythingPlaying ? 100 : 0) }
+          ]}
           showsVerticalScrollIndicator={false}
-          initialNumToRender={10}
-          maxToRenderPerBatch={15}
-          windowSize={8}
           extraData={{ activeAyahNum, isBismillahPlaying, isQueueLoading, currentProgress, isPaused }}
           ListHeaderComponent={<ListHeader />}
           ListFooterComponent={
@@ -692,15 +769,15 @@ export const QuranReader = ({ route, navigation }: any) => {
               <TouchableOpacity onPress={() => navigation.navigate('Sukoon')}>
                 <Text style={styles.sukoonPrompt}>Touched by this? Write in Sukoon →</Text>
               </TouchableOpacity>
-              <View style={{ height: 160 }} /> 
+              <View style={{ height: 32 }} />
             </View>
-          }
+}
         />
       )}
 
       {/* ── Enhanced Bottom Audio Bar ── */}
       {(isAnythingPlaying) && (
-        <View style={styles.audioBar}>
+        <View style={[styles.audioBar, { paddingBottom: insets.bottom + 16 }]}>
           {/* Progress bar across top of audio bar */}
           <View style={styles.audioProgressBg}>
             <View style={[styles.audioProgressFill, { flex: currentProgress }]} />
@@ -746,7 +823,7 @@ export const QuranReader = ({ route, navigation }: any) => {
       {/* Shimmer and Modal basically unchanged */}
       <Animated.View style={[styles.shimmerBanner, { opacity: shimmerAnim }]} pointerEvents="none">
         <LinearGradient colors={['#D4AF37', '#B8950A']} style={styles.shimmerGradient}>
-          <Text style={styles.shimmerText}>✨ This ayah is now your anchor.</Text>
+          <Text style={styles.shimmerText}><MaterialIcons name="auto-awesome" size={16} color="#fff" /> This ayah is now your anchor.</Text>
           <Text style={styles.shimmerSubtext}>May it guide you always.</Text>
         </LinearGradient>
       </Animated.View>
@@ -754,7 +831,7 @@ export const QuranReader = ({ route, navigation }: any) => {
       <Modal visible={showModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalEmoji}>⭐</Text>
+            <MaterialIcons name="star" size={48} color={Colors.accent} />
             <Text style={styles.modalTitle}>Set as Your Ayah of My Life?</Text>
             <Text style={styles.modalArabic}>{selectedAyah?.text}</Text>
             <Text style={styles.modalTranslation}>{selectedAyah?.translation}</Text>
@@ -769,8 +846,8 @@ export const QuranReader = ({ route, navigation }: any) => {
           </View>
         </View>
       </Modal>
-    </View>
-  );
+    </ScreenWrapper>
+);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -780,7 +857,7 @@ export const QuranReader = ({ route, navigation }: any) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   topBar: {
-    flexDirection: 'row', alignItems: 'center', paddingTop: 64, paddingHorizontal: Spacing.base,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.base,
     paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
     backgroundColor: 'rgba(248,246,241,0.97)', zIndex: 10,
   },
@@ -793,7 +870,7 @@ const styles = StyleSheet.create({
   errorText: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.textDark },
   retryBtn: { backgroundColor: Colors.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
   retryText: { color: '#fff', fontFamily: 'Plus Jakarta Sans', fontWeight: '700' },
-  listContent: { paddingHorizontal: Spacing.base, paddingTop: Spacing.md, paddingBottom: 130 },
+  listContent: { paddingHorizontal: Spacing.base, paddingTop: Spacing.md },
   bismillahContainer: { paddingVertical: Spacing.xl, alignItems: 'center', gap: 12 },
   bismillahRow: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, gap: 8 },
   bismillahRowActive: { backgroundColor: 'rgba(15,109,91,0.08)', borderWidth: 1, borderColor: 'rgba(15,109,91,0.15)' },
@@ -839,7 +916,6 @@ const styles = StyleSheet.create({
     bottom: 0, left: 0, right: 0,
     backgroundColor: '#fff',
     borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)',
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
     ...Shadows.md,
   },
   audioProgressBg: { width: '100%', flexDirection: 'row', height: 3, backgroundColor: 'rgba(15,109,91,0.1)' },

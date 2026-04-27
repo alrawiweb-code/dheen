@@ -8,13 +8,16 @@ import {
   ScrollView,
   Dimensions,
   StatusBar,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Typography, Spacing, BorderRadius, Shadows, DhikrOptions } from '../theme';
 import { DAILY_AYAHS } from '../services/quranApi';
 import { useAppStore } from '../store/useAppStore';
 import { HapticButton } from '../components/HapticButton';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { ScreenWrapper } from '../components/ScreenWrapper';
 
 const { width } = Dimensions.get('window');
 
@@ -88,26 +91,30 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
   };
 
   const phaseConfig = {
-    ayah: { emoji: '📖', label: 'Ayah (10s)', color: Colors.primary },
-    dhikr: { emoji: '📿', label: 'Dhikr (30s)', color: Colors.accent },
-    dua: { emoji: '🤲', label: "Du'a (20s)", color: '#E57373' },
-    complete: { emoji: '✨', label: 'Complete', color: Colors.primary },
+    ayah: { icon: 'menu-book', label: 'Ayah (10s)', color: Colors.primary },
+    dhikr: { icon: 'self-improvement', label: 'Dhikr (30s)', color: Colors.accent },
+    dua: { icon: 'volunteer-activism', label: "Du'a (20s)", color: '#E57373' },
+    complete: { icon: 'auto-awesome', label: 'Complete', color: Colors.primary },
   };
 
   const config = phaseConfig[phase];
 
   if (phase === 'complete') {
     return (
-      <View style={styles.container}>
+      <ScreenWrapper>
         <LinearGradient colors={['#0A3D2B', '#0F6D5B']} style={StyleSheet.absoluteFill} />
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
         <View style={styles.completeContent}>
-          <Text style={styles.completeEmoji}>✨</Text>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={{ width: 72, height: 72, borderRadius: 16, marginBottom: 16 }}
+            resizeMode="contain"
+          />
           <Text style={styles.completeTitle}>SubhanAllah.</Text>
           <Text style={styles.completeSub}>You gave 1 minute entirely to Allah.</Text>
-          <Text style={styles.completeSub2}>May Allah accept it from you. Ameen. 🤲</Text>
+          <Text style={styles.completeSub2}>May Allah accept it from you. Ameen.</Text>
           <HapticButton onPress={handleStart} style={styles.startBtn} hapticType="medium">
             <LinearGradient colors={['#D4AF37', '#B8950A']} style={styles.startBtnGradient}>
               <Text style={styles.startBtnText}>Again</Text>
@@ -117,8 +124,8 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
             <Text style={styles.doneText}>Done</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    );
+      </ScreenWrapper>
+);
   }
 
   return (
@@ -131,15 +138,18 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <Text style={styles.header}>✦  1 Minute for Allah</Text>
+        <Text style={styles.header}><MaterialIcons name="auto-awesome" size={20} color={Colors.accent} />  1 Minute for Allah</Text>
 
         {/* Phase pills */}
         <View style={styles.phasePills}>
           {(['ayah', 'dhikr', 'dua'] as Phase[]).map((p) => (
             <View key={p} style={[styles.phasePill, phase === p && styles.phasePillActive]}>
-              <Text style={[styles.phasePillText, phase === p && styles.phasePillTextActive]}>
-                {phaseConfig[p].emoji} {phaseConfig[p].label}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MaterialIcons name={phaseConfig[p].icon as any} size={14} color={phase === p ? '#fff' : 'rgba(255,255,255,0.5)'} />
+                <Text style={[styles.phasePillText, phase === p && styles.phasePillTextActive]}>
+                  {phaseConfig[p].label}
+                </Text>
+              </View>
             </View>
           ))}
         </View>
@@ -166,7 +176,7 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
           <Animated.View style={[styles.phaseContent, { opacity: fadeAnim }]}>
             {phase === 'ayah' && (
               <>
-                <Text style={styles.phaseEmoji}>📖</Text>
+                <MaterialIcons name="menu-book" size={40} color="rgba(255,255,255,0.8)" />
                 <Text style={styles.phaseArabic}>{ayah.arabic}</Text>
                 <Text style={styles.phaseTranslation}>{ayah.translation}</Text>
                 <Text style={styles.phaseRef}>{ayah.reference}</Text>
@@ -174,7 +184,7 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
             )}
             {phase === 'dhikr' && (
               <>
-                <Text style={styles.phaseEmoji}>📿</Text>
+                <MaterialIcons name="self-improvement" size={40} color={Colors.accent} />
                 <Text style={styles.dhikrText}>SubhanAllah</Text>
                 <Text style={styles.dhikrText}>Alhamdulillah</Text>
                 <Text style={styles.dhikrText}>Allahu Akbar</Text>
@@ -183,7 +193,7 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
             )}
             {phase === 'dua' && (
               <>
-                <Text style={styles.phaseEmoji}>🤲</Text>
+                <MaterialIcons name="volunteer-activism" size={40} color="#E57373" />
                 <Text style={styles.phaseArabic}>{DUA}</Text>
                 <Text style={styles.phaseTranslation}>{DUA_TRANS}</Text>
               </>
@@ -208,7 +218,7 @@ export const OneMinuteAllahScreen: React.FC<OneMinuteAllahProps> = ({ navigation
         )}
       </View>
     </View>
-  );
+);
 };
 
 const styles = StyleSheet.create({

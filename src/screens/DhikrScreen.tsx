@@ -5,15 +5,17 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  SafeAreaView,
   Animated,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Audio } from 'expo-av';
+
 import { Colors, Typography, NativeSpacing as Spacing } from '../theme';
 import { useAppStore } from '../store/useAppStore';
+import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper';
 
 const { width } = Dimensions.get('window');
 
@@ -26,69 +28,21 @@ const DHIKR_LIST = [
 ];
 
 export const DhikrScreen = ({ navigation }: any) => {
+  const bottomInset = useScreenBottomInset();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [soundVisible, setSoundVisible] = useState(false);
-  const [activeSoundType, setActiveSoundType] = useState<'Rain' | 'Wind' | 'Nature'>('Rain');
+
   const [phase, setPhase] = useState<'INHALE' | 'EXHALE'>('INHALE');
   const phaseRef = useRef<'INHALE' | 'EXHALE'>('INHALE');
+  const [breathingEnabled, setBreathingEnabled] = useState(true);
 
   const [dhikrIndex, setDhikrIndex] = useState(0);
   const [dhikrCount, setDhikrCount] = useState(0);
   const currentDhikr = DHIKR_LIST[dhikrIndex];
-  
   const { profile } = useAppStore();
-
-  const soundRef = useRef<Audio.Sound | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Cleanup audio
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-    };
-  }, []);
 
-  // Effect 1: Handle play/pause only
-  useEffect(() => {
-    if (!soundRef.current) return;
-    if (isPlaying) {
-      soundRef.current.playAsync().catch(() => {});
-    } else {
-      soundRef.current.pauseAsync().catch(() => {});
-    }
-  }, [isPlaying]);
-
-  // Effect 2: Load new sound when sound type changes
-  useEffect(() => {
-    const loadSound = async () => {
-      const sources: Record<string, string> = {
-        Rain: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_88447d341b.mp3',
-        Wind: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
-        Nature: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b8f72a4d.mp3',
-      };
-
-      try {
-        if (soundRef.current) {
-          await soundRef.current.stopAsync();
-          await soundRef.current.unloadAsync();
-          soundRef.current = null;
-        }
-
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: sources[activeSoundType] },
-          { isLooping: true, shouldPlay: isPlaying }
-        );
-        soundRef.current = sound;
-      } catch (e) {
-        console.warn('[DhikrScreen] Audio load error:', e);
-      }
-    };
-
-    loadSound();
-  }, [activeSoundType]);
 
   useEffect(() => {
     let loop: Animated.CompositeAnimation | null = null;
@@ -138,40 +92,43 @@ export const DhikrScreen = ({ navigation }: any) => {
   }, [isPlaying]);
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       {/* Background Radial Gradient Effect */}
-      <View style={StyleSheet.absoluteFill}>
-        <View style={styles.radialGradientBg} />
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={styles.radialGradientBg} pointerEvents="none" />
       </View>
 
       {/* Top Header */}
-      <SafeAreaView>
+      <View>
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity 
-              style={styles.closeBtn} 
-              onPress={() => navigation.goBack()}
-            >
-              <MaterialIcons name="close" size={24} color="#9aecd5" />
-            </TouchableOpacity>
-            <Text style={styles.headerLabel}>FOCUS MODE</Text>
+          <TouchableOpacity 
+            style={styles.closeBtn} 
+            onPress={() => navigation.goBack()}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+          >
+            <MaterialIcons name="close" size={24} color="#a1f2db" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>DHIKR</Text>
           </View>
-          <Text style={styles.dateText}>{profile?.name || 'Friend'}</Text>
-          <View style={styles.headerRight}>
-            <View style={styles.soundLabelContainer}>
-              <Text style={styles.soundLabel}>Sound: {activeSoundType}</Text>
-              <TouchableOpacity onPress={() => setSoundVisible(!soundVisible)}>
-                <MaterialIcons name="volume-up" size={20} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </SafeAreaView>
 
-      {/* Main Breathing Core */}
-      <View style={styles.mainCanvas}>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        {/* Main Breathing Core */}
+        <View style={styles.mainCanvas}>
         <View style={styles.coreContainer}>
-          <Animated.View style={[styles.glowOrb, { transform: [{ scale: pulseAnim }], opacity: pulseAnim.interpolate({inputRange:[1, 1.35], outputRange:[0.2, 0.6]}) }]} />
+          <Animated.View 
+            pointerEvents="none"
+            style={[
+              styles.glowOrb, 
+              { 
+                transform: [{ scale: breathingEnabled ? pulseAnim : 1 }], 
+                opacity: breathingEnabled ? pulseAnim.interpolate({inputRange:[1, 1.35], outputRange:[0.2, 0.6]}) : 0.2 
+              }
+            ]} 
+          />
           
           <BlurView intensity={30} tint="light" style={styles.innerCore}>
             <Text style={styles.inhaleText}>{phase}</Text>
@@ -180,19 +137,24 @@ export const DhikrScreen = ({ navigation }: any) => {
               <Text style={styles.dhikrArabic}>{currentDhikr.arabic}</Text>
             </View>
             <View style={styles.progressDots}>
-              <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 28, fontWeight: '800', color: '#fff', marginTop: 8 }}>
+              <Text style={styles.cycleCountText}>
                 {dhikrCount}
               </Text>
-              <Text style={{ fontFamily: 'Manrope', fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 2 }}>
+              <Text style={styles.cycleLabelText}>
                 CYCLES
               </Text>
             </View>
           </BlurView>
 
-          {/* Floating Element */}
-          <BlurView intensity={20} tint="dark" style={styles.floatingPanel}>
-            <MaterialIcons name="flare" size={20} color="#ffe088" />
-          </BlurView>
+          {/* Floating Element now toggles breathing animation */}
+          <TouchableOpacity 
+            style={styles.floatingPanel}
+            activeOpacity={0.7}
+            onPress={() => setBreathingEnabled(!breathingEnabled)}
+          >
+            <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+            <MaterialIcons name={breathingEnabled ? "flare" : "brightness-2"} size={20} color={breathingEnabled ? "#ffe088" : "rgba(255,255,255,0.4)"} />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.instructionalText}>
@@ -209,11 +171,15 @@ export const DhikrScreen = ({ navigation }: any) => {
       </View>
 
       {/* Bottom Controls */}
-      <View style={styles.bottomSection}>
+      <View style={[styles.bottomSection, { paddingBottom: Math.max(bottomInset, 24) }]}>
         {/* Session Dua Card */}
         <BlurView intensity={20} tint="dark" style={styles.duaCard}>
           <View style={styles.duaIconBox}>
-            <MaterialIcons name="auto-stories" size={24} color="#ffe088" />
+            <Image
+              source={require('../../assets/icon.png')}
+              style={{ width: 32, height: 32, borderRadius: 8 }}
+              resizeMode="contain"
+            />
           </View>
           <View style={styles.duaContent}>
             <Text style={styles.duaTitle}>Completion Dua</Text>
@@ -228,7 +194,7 @@ export const DhikrScreen = ({ navigation }: any) => {
             style={styles.secondaryBtn}
             onPress={() => setDhikrIndex(i => (i - 1 + DHIKR_LIST.length) % DHIKR_LIST.length)}
           >
-            <MaterialIcons name="skip-previous" size={28} color="#fff" />
+            <MaterialIcons name="skip-previous" size={24} color="#fff" />
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -239,45 +205,25 @@ export const DhikrScreen = ({ navigation }: any) => {
             <LinearGradient
               colors={['#0f6d5b', Colors.primary]}
               style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
             />
-            <MaterialIcons name={isPlaying ? "pause" : "play-arrow"} size={24} color="#fff" />
-            <Text style={styles.primaryBtnText}>{isPlaying ? 'PAUSE SESSION' : 'START SESSION'}</Text>
+            <MaterialIcons name={isPlaying ? "pause" : "play-arrow"} size={26} color="#fff" />
+            <Text style={styles.primaryBtnText}>{isPlaying ? 'PAUSE' : 'START'}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={styles.secondaryBtn}
             onPress={() => setDhikrIndex(i => (i + 1) % DHIKR_LIST.length)}
           >
-            <MaterialIcons name="skip-next" size={28} color="#fff" />
+            <MaterialIcons name="skip-next" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
+      </ScrollView>
 
-      {/* Sound Selection Menu */}
-      {soundVisible && (
-        <BlurView intensity={30} tint="dark" style={styles.soundMenu}>
-          <TouchableOpacity 
-            style={activeSoundType === 'Rain' ? styles.soundBtnActive : styles.soundBtnInactive}
-            onPress={() => { setActiveSoundType('Rain'); setSoundVisible(false); }}
-          >
-            <MaterialIcons name="water-drop" size={24} color={activeSoundType === 'Rain' ? "#745c00" : "rgba(255,255,255,0.4)"} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={activeSoundType === 'Wind' ? styles.soundBtnActive : styles.soundBtnInactive}
-            onPress={() => { setActiveSoundType('Wind'); setSoundVisible(false); }}
-          >
-            <MaterialIcons name="air" size={24} color={activeSoundType === 'Wind' ? "#745c00" : "rgba(255,255,255,0.4)"} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={activeSoundType === 'Nature' ? styles.soundBtnActive : styles.soundBtnInactive}
-            onPress={() => { setActiveSoundType('Nature'); setSoundVisible(false); }}
-          >
-            <MaterialIcons name="nature" size={24} color={activeSoundType === 'Nature' ? "#745c00" : "rgba(255,255,255,0.4)"} />
-          </TouchableOpacity>
-        </BlurView>
-      )}
-    </View>
-  );
+
+    </ScreenWrapper>
+);
 };
 
 const styles = StyleSheet.create({
@@ -291,27 +237,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    backgroundColor: 'rgba(251, 249, 244, 0.8)',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     zIndex: 100,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#0f6d5b',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(161, 242, 219, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerLabel: { fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '700', color: Colors.secondary, letterSpacing: 1 },
-  dateText: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.primary },
-  headerRight: { alignItems: 'flex-end' },
-  soundLabelContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  soundLabel: { fontFamily: 'Manrope', fontSize: 10, fontWeight: '600', color: 'rgba(27, 28, 25, 0.4)', textTransform: 'uppercase', letterSpacing: 1 },
+  headerTitleContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: -1,
+  },
+  headerTitle: { 
+    fontFamily: 'Plus Jakarta Sans', 
+    fontSize: 14, 
+    fontWeight: '800', 
+    color: '#a1f2db', 
+    letterSpacing: 2, 
+    textTransform: 'uppercase'
+  },
+  soundIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(161, 242, 219, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   mainCanvas: {
     flex: 1,
@@ -319,8 +279,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   coreContainer: {
-    width: width * 0.8,
-    maxWidth: 384,
+    width: width * 0.65,
+    maxWidth: 320,
     aspectRatio: 1,
     borderRadius: 200,
     borderWidth: 1,
@@ -328,6 +288,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    marginTop: 16,
+    marginBottom: 16,
   },
   glowOrb: {
     ...StyleSheet.absoluteFillObject,
@@ -347,10 +309,11 @@ const styles = StyleSheet.create({
   },
   inhaleText: { fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '800', color: '#a1f2db', letterSpacing: 4, marginBottom: Spacing.xl },
   dhikrTextContainer: { alignItems: 'center', gap: 8 },
-  dhikrEnglish: { fontFamily: 'Plus Jakarta Sans', fontSize: 36, fontWeight: '800', color: '#fff', letterSpacing: -1 },
-  dhikrArabic: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 48, color: 'rgba(255,255,255,0.9)' },
-  progressDots: { flexDirection: 'row', gap: 4, marginTop: Spacing['2xl'] },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+  dhikrEnglish: { fontFamily: 'Plus Jakarta Sans', fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  dhikrArabic: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 40, color: 'rgba(255,255,255,0.9)' },
+  progressDots: { alignItems: 'center', marginTop: 14 },
+  cycleCountText: { fontFamily: 'Plus Jakarta Sans', fontSize: 24, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  cycleLabelText: { fontFamily: 'Manrope', fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginTop: 2 },
   floatingPanel: {
     position: 'absolute',
     top: -16,
@@ -366,12 +329,12 @@ const styles = StyleSheet.create({
   },
   instructionalText: {
     fontFamily: 'Manrope',
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(161, 242, 219, 0.6)',
     textAlign: 'center',
     paddingHorizontal: Spacing['3xl'],
-    marginTop: Spacing['3xl'],
-    lineHeight: 24,
+    marginTop: 20,
+    lineHeight: 22,
   },
   switchModeBtn: {
     flexDirection: 'row',
@@ -396,54 +359,64 @@ const styles = StyleSheet.create({
 
   bottomSection: {
     width: '100%',
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: 48,
     alignItems: 'center',
   },
   duaCard: {
-    width: '100%',
-    maxWidth: 500,
+    width: width - 40,
     flexDirection: 'row',
-    padding: Spacing.xl,
-    borderRadius: 32,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
-    marginBottom: Spacing['2xl'],
+    marginTop: 16,
+    marginBottom: 16,
     overflow: 'hidden',
-    gap: 24,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
-  duaIconBox: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(115,92,0,0.2)', alignItems: 'center', justifyContent: 'center' },
-  duaContent: { flex: 1 },
+  duaIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(115,92,0,0.2)', alignItems: 'center', justifyContent: 'center' },
+  duaContent: { flex: 1, justifyContent: 'center' },
   duaTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '800', color: '#fff', letterSpacing: 1, marginBottom: 4 },
-  duaEnglish: { fontFamily: 'Manrope', fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 22, marginBottom: 12 },
-  duaArabic: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 20, color: '#fff', textAlign: 'right' },
+  duaEnglish: { fontFamily: 'Manrope', fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 20, marginBottom: 8 },
+  duaArabic: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 18, color: '#fff', textAlign: 'right' },
 
-  controlsRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  controlsRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    width: width - 60,
+    marginTop: 24,
+  },
   secondaryBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(161, 242, 219, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryBtn: {
-    height: 64,
-    paddingHorizontal: 32,
-    borderRadius: 20,
+    width: 200,
+    height: 58,
+    borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  primaryBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '700', color: '#fff' },
+  primaryBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '800', letterSpacing: 1, color: '#fff' },
 
   soundMenu: {
     position: 'absolute',
-    bottom: 150,
     right: 24,
     padding: 12,
     borderRadius: 24,

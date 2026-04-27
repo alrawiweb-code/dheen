@@ -1,12 +1,14 @@
 {
   "expo": {
-    "name": "Dheen",
+    "name": "Deen Islam",
     "slug": "dheen-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0A3D2B"
     },
     "plugins": [
@@ -18,7 +20,8 @@
           "icon": "./assets/icon.png",
           "color": "#0F6D5B"
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "android": {
       "adaptiveIcon": {
@@ -26,7 +29,7 @@
         "backgroundColor": "#0A3D2B"
       },
       "package": "com.dheen.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

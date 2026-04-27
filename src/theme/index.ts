@@ -153,22 +153,22 @@ export const Shadows = {
 };
 
 export const PrayerIcons = {
-  fajr: '🌙',
-  dhuhr: '☀️',
-  asr: '🌤️',
-  maghrib: '🌅',
-  isha: '🌑',
+  fajr: 'nightlight-round',
+  dhuhr: 'wb-sunny',
+  asr: 'wb-cloudy',
+  maghrib: 'wb-twilight',
+  isha: 'nights-stay',
 };
 
 export const Prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
 export type Prayer = typeof Prayers[number];
 
 export const MoodOptions = [
-  { key: 'connected', label: 'Deeply Connected', color: '#0F6D5B', emoji: '💚' },
-  { key: 'present', label: 'Present & Focused', color: '#4CAF7D', emoji: '🌿' },
-  { key: 'distracted', label: 'Distracted', color: '#9E9E9E', emoji: '💭' },
-  { key: 'rushed', label: 'Rushed', color: '#FFB74D', emoji: '⚡' },
-  { key: 'emotional', label: 'Emotional', color: '#F48FB1', emoji: '🌸' },
+  { key: 'connected', label: 'Deeply Connected', color: '#0F6D5B', icon: 'favorite' },
+  { key: 'present', label: 'Present & Focused', color: '#4CAF7D', icon: 'spa' },
+  { key: 'distracted', label: 'Distracted', color: '#9E9E9E', icon: 'cloud' },
+  { key: 'rushed', label: 'Rushed', color: '#FFB74D', icon: 'bolt' },
+  { key: 'emotional', label: 'Emotional', color: '#F48FB1', icon: 'water-drop' },
 ] as const;
 
 export const DhikrOptions = [
@@ -180,12 +180,12 @@ export const DhikrOptions = [
 ] as const;
 
 export const NiyyahPresets = [
-  'For knowledge 📖',
-  'For healing 🤲',
-  'For my family 👨‍👩‍👧‍👦',
-  'For Allah alone 💚',
-  'For gratitude 🙏',
-  'For forgiveness 💫',
+  { label: 'For knowledge', icon: 'menu-book' },
+  { label: 'For healing', icon: 'volunteer-activism' },
+  { label: 'For my family', icon: 'family-restroom' },
+  { label: 'For Allah alone', icon: 'favorite' },
+  { label: 'For gratitude', icon: 'emoji-objects' },
+  { label: 'For forgiveness', icon: 'auto-awesome' },
 ];
 
 export const SukoonPrompts = [

@@ -5,7 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  SafeAreaView,
+  Platform,
+  Animated,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -13,6 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, NativeSpacing as Spacing } from '../theme';
 import { Magnetometer } from 'expo-sensors';
 import { useAppStore } from '../store/useAppStore';
+import { useIsFocused } from '@react-navigation/native';
+import { ScreenWrapper } from '../components/ScreenWrapper';
+
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 const { width } = Dimensions.get('window');
 const COMPASS_SIZE = Math.min(width * 0.78, 300);
@@ -35,120 +41,184 @@ export const QiblaScreen = ({ navigation }: any) => {
   const { profile } = useAppStore();
   const [deviceHeading, setDeviceHeading] = useState(0);
   const [permissionError, setPermissionError] = useState(false);
+  const [needsCalibration, setNeedsCalibration] = useState(false);
+  
   const subRef = useRef<any>(null);
+  const isFocused = useIsFocused();
 
   const lat = profile.latitude || 25.2048;
   const lng = profile.longitude || 55.2708;
   const qiblaBearing = getBearing(lat, lng, MECCA_LAT, MECCA_LNG);
 
+  const animatedHeading = useRef(new Animated.Value(0)).current;
+  const lastHeading = useRef(0);
+
   useEffect(() => {
+    let isMounted = true;
+    
     const initCompass = async () => {
       try {
         const available = await Magnetometer.isAvailableAsync();
+        
+        // CRITICAL FIX: If component unmounted or lost focus during the await, abort immediately.
+        // Failing to do this causes an orphaned 20-FPS background listener to leak.
+        if (!isMounted) return;
+        
         if (!available) {
           setPermissionError(true);
           return;
         }
-        Magnetometer.setUpdateInterval(100);
+        
+        Magnetometer.setUpdateInterval(50); // Faster updates for smooth animation
+        
         subRef.current = Magnetometer.addListener(data => {
+          if (!isMounted) return;
+          
+          // Calibration detection (Earth's magnetic field is 25-65 µT)
+          const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
+          if (magnitude < 15 || magnitude > 85) {
+            setNeedsCalibration(true);
+          } else {
+            setNeedsCalibration(false);
+          }
+
           let angle = Math.atan2(data.y, data.x) * (180 / Math.PI);
-          angle = angle >= 0 ? angle : angle + 360;
-          setDeviceHeading(angle);
+          if (angle < 0) angle += 360;
+          
+          let heading = angle - 90;
+          if (heading < 0) heading += 360;
+
+          // Find shortest rotation path
+          let diff = heading - lastHeading.current;
+          while (diff > 180) diff -= 360;
+          while (diff < -180) diff += 360;
+          
+          const targetHeading = lastHeading.current + diff;
+          lastHeading.current = targetHeading;
+          
+          setDeviceHeading(Math.round((targetHeading % 360 + 360) % 360));
+
+          Animated.timing(animatedHeading, {
+            toValue: targetHeading,
+            duration: 50,
+            useNativeDriver: true,
+          }).start();
         });
       } catch (e) {
-        setPermissionError(true);
+        if (isMounted) setPermissionError(true);
       }
     };
-    initCompass();
+
+    if (isFocused) {
+      initCompass();
+    } else {
+      if (subRef.current) {
+        subRef.current.remove();
+        subRef.current = null;
+      }
+    }
 
     return () => {
-      subRef.current?.remove();
-      subRef.current = null;
+      isMounted = false;
+      if (subRef.current) {
+        subRef.current.remove();
+        subRef.current = null;
+      }
     };
-  }, []);
+  }, [isFocused]);
 
-  const compassRotation = 360 - deviceHeading;
-  const pointerRotation = qiblaBearing;
+  const compassRotationAnim = animatedHeading.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-1deg']
+  });
+
+  const qiblaDirection = Math.round((qiblaBearing - deviceHeading + 360) % 360);
+  const isFacingQibla = qiblaDirection < 5 || qiblaDirection > 355;
 
   return (
-    <View style={styles.container}>
-      {/* Radial gradient background */}
+    <ScreenWrapper>
       <LinearGradient
         colors={['#0F6D5B', '#002019']}
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Top AppBar */}
-      <SafeAreaView>
+      <View>
         <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="arrow-back" size={28} color={Colors.primary} />
+          </TouchableOpacity>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar}>
-               <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>{profile.name?.[0]?.toUpperCase() || 'A'}</Text>
-            </View>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
             <Text style={styles.headerLabel}>QIBLA</Text>
           </View>
+          <View style={{ width: 40 }} /> 
         </View>
-      </SafeAreaView>
+      </View>
 
-      {/* Main compass canvas */}
       <View style={styles.mainCanvas}>
         {permissionError && (
-          <View style={{ position: 'absolute', top: -50, backgroundColor: 'rgba(186, 26, 26, 0.9)', padding: 12, borderRadius: 12, zIndex: 50, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <MaterialIcons name="error-outline" size={20} color="#fff" />
-            <Text style={{ color: '#fff', fontFamily: 'Manrope', fontSize: 14 }}>Compass unavailable or permission denied.</Text>
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="explore-off" size={24} color="#fff" />
+            <Text style={styles.errorText}>Compass not available.</Text>
           </View>
         )}
-        
-        {/* Location badge */}
+
         <View style={styles.locationBadge}>
           <Text style={styles.locationLabel}>{profile.city ? `Location: ${profile.city}, ${profile.country}` : 'Location Active'}</Text>
-          <Text style={styles.bearingText}>{Math.round(qiblaBearing)}°</Text>
-          <Text style={styles.alignText}>Align yourself with the arrow to face the Kaaba</Text>
+          <Text style={[styles.bearingText, isFacingQibla && { color: '#fed65b' }]}>{Math.round(qiblaBearing)}°</Text>
+          {!permissionError && (
+            <Text style={styles.alignText}>
+              {isFacingQibla ? 'You are facing the Qibla' : 'Align yourself with the arrow to face the Kaaba'}
+            </Text>
+          )}
         </View>
 
-        {/* Compass ring */}
-        <View style={styles.compassOuter}>
-          {/* Decorative rings */}
+        <View style={[styles.compassOuter, permissionError && { opacity: 0.5 }]}>
           <View style={styles.compassRing1} />
           <View style={styles.compassRing2} />
 
-          {/* Compass disk - this rotates with the device magnetometer */}
-          <BlurView intensity={10} tint="dark" style={[styles.compassDisk, { transform: [{ rotate: `${compassRotation}deg` }] }]}>
-            {/* Inner degree ring */}
+          <AnimatedBlurView intensity={Platform.OS === 'ios' ? 10 : 100} tint="dark" style={[styles.compassDisk, { transform: [{ rotate: compassRotationAnim }] }]}>
             <View style={styles.degreeRing} />
 
-            {/* Cardinal labels */}
             <Text style={[styles.cardinal, styles.cardinalN]}>N</Text>
             <Text style={[styles.cardinal, styles.cardinalE]}>E</Text>
             <Text style={[styles.cardinal, styles.cardinalS]}>S</Text>
             <Text style={[styles.cardinal, styles.cardinalW]}>W</Text>
 
-            {/* Qibla arrow rotates pointing to the exact bearing relative to North */}
-            <View style={[styles.arrowContainer, { transform: [{ rotate: `${pointerRotation}deg` }] }]}>
-              <View style={styles.arrowTip}>
+            <View style={[styles.arrowContainer, { transform: [{ rotate: `${qiblaBearing}deg` }] }]}>
+              <View style={[styles.arrowTip, isFacingQibla && { backgroundColor: '#fff' }]}>
                 <MaterialIcons name="mosque" size={18} color="#241a00" />
               </View>
-              <View style={styles.arrowShaft} />
+              <View style={[styles.arrowShaft, isFacingQibla && { borderTopColor: '#fff' }]} />
             </View>
 
-            {/* Center dot */}
             <View style={styles.centerDot} />
-          </BlurView>
+          </AnimatedBlurView>
         </View>
 
-        {/* GPS Status card */}
-        <BlurView intensity={20} tint="dark" style={styles.statusCard}>
-          <View style={styles.statusIconBg}>
-            <MaterialIcons name="gps-fixed" size={24} color="#a1f2db" />
+        <BlurView intensity={Platform.OS === 'ios' ? 20 : 100} tint="dark" style={[styles.statusCard, needsCalibration && { borderColor: 'rgba(255, 165, 0, 0.5)' }]}>
+          <View style={[styles.statusIconBg, needsCalibration && { backgroundColor: 'rgba(255, 165, 0, 0.2)' }]}>
+            <MaterialIcons name={permissionError ? "gps-off" : needsCalibration ? "screen-rotation" : "gps-fixed"} size={24} color={needsCalibration ? "#FFA500" : "#a1f2db"} />
           </View>
-          <View>
-            <Text style={styles.statusTitle}>GPS Calibrated</Text>
-            <Text style={styles.statusSub}>Accuracy within 3 meters</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statusTitle}>
+              {permissionError ? "Sensor Error" : needsCalibration ? "Calibration Needed" : "Compass Calibrated"}
+            </Text>
+            <Text style={styles.statusSub}>
+              {permissionError ? "Could not initialize compass" : needsCalibration ? "Move your phone in a figure-8 motion to calibrate" : "Accuracy is optimal"}
+            </Text>
           </View>
         </BlurView>
       </View>
-
-    </View>
+    </ScreenWrapper>
   );
 };
 
@@ -165,7 +235,23 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eae8e3' },
+  headerLogo: { width: 32, height: 32, borderRadius: 8 },
+  backButton: { width: 40, height: 40, justifyContent: 'center' },
+
+  errorContainer: {
+    position: 'absolute', 
+    top: -50, 
+    backgroundColor: 'rgba(186, 26, 26, 0.9)', 
+    padding: 12, 
+    borderRadius: 12, 
+    zIndex: 50, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8
+  },
+  errorText: { color: '#fff', fontFamily: 'Manrope', fontSize: 14 },
+
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eae8e3', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   headerLabel: { fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '800', color: Colors.secondary, letterSpacing: 2 },
   dateText: { fontFamily: 'Plus Jakarta Sans', fontWeight: '700', fontSize: 16, color: Colors.primary },
 
@@ -213,7 +299,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    // compass glow
     shadowColor: '#85d6c0',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
@@ -263,7 +348,6 @@ const styles = StyleSheet.create({
     height: COMPASS_SIZE / 2.5,
     borderRadius: 3,
     backgroundColor: 'transparent',
-    // Gradient effect via shadow
     borderTopWidth: 2,
     borderTopColor: '#fed65b',
   },
@@ -300,21 +384,4 @@ const styles = StyleSheet.create({
   },
   statusTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: '#FBF9F4', marginBottom: 2 },
   statusSub: { fontFamily: 'Manrope', fontSize: 12, color: 'rgba(161,242,219,0.6)' },
-
-  fab: {
-    position: 'absolute',
-    bottom: 100,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
-  },
 });

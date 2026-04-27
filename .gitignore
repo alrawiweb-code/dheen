@@ -4,6 +4,8 @@ node_modules/
 # expo
 .expo/
 web-build/
+android/
+ios/
 
 # production
 dist/
@@ -28,3 +30,24 @@ yarn-error.log*
 # expo-updates
 ios/Expo.plist
 android/app/src/main/assets/expo-updates.properties
+
+# IDEs and editors
+.idea/
+.vscode/
+
+# Keystores
+*.keystore
+
+# Logs
+build.log
+*.log
+
+# Temp/Scratch
+scratch/
+fix_summary.md
+test_location.js
+check-web.js
+images/
+*removebg-preview.png
+*backup.png
+

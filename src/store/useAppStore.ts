@@ -104,8 +104,12 @@ export interface AppState {
     sukoonCount: number;
     ayahSet: boolean;
     adhanStreakDays: number;
+    lastQuranDate?: string;
+    lastFajrDate?: string;
+    lastStreakDate?: string;
   };
   incrementMilestone: (key: keyof AppState['milestones']) => void;
+  decrementMilestone: (key: keyof AppState['milestones']) => void;
 }
 
 const defaultAdhanPrayerSettings: AdhanPrayerSettings = {
@@ -145,12 +149,12 @@ export const useAppStore = create<AppState>()(
     longitude: null,
     onboardingComplete: false,
   },
-  setProfile: (profile) =>
-    set((state) => ({ profile: { ...state.profile, ...profile } })),
+  setProfile: (profile: Partial<UserProfile>) =>
+    set((state: AppState) => ({ profile: { ...state.profile, ...profile } })),
 
   todayNiyyah: '',
   niyyahDate: '',
-  setNiyyah: (niyyah) => set({
+  setNiyyah: (niyyah: string) => set({
     todayNiyyah: niyyah,
     niyyahDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
   }),
@@ -169,10 +173,51 @@ export const useAppStore = create<AppState>()(
     Maghrib: 'pending',
     Isha: 'pending',
   },
-  setPrayerStatus: (prayer, status) =>
-    set((state) => ({
-      prayerStatuses: { ...state.prayerStatuses, [prayer]: status },
-    })),
+  setPrayerStatus: (prayer: Prayer, status: PrayerStatus) =>
+    set((state: AppState) => {
+      let milestoneUpdate: Record<string, any> = {};
+
+      if (status === 'done') {
+        // Early Riser — Fajr marked done before 6AM, once per day only
+        if (prayer === 'Fajr') {
+          const now = new Date();
+          const hour = now.getHours();
+          const today = now.toDateString();
+          const notCounted = state.milestones.lastFajrDate !== today;
+          if (hour < 6 && notCounted) {
+            milestoneUpdate = {
+              ...milestoneUpdate,
+              fajrCount: state.milestones.fajrCount + 1,
+              lastFajrDate: today,
+            };
+          }
+        }
+
+        // Anchor Found — all 5 prayers completed in one day = 1 streak day
+        const updatedStatuses = { ...state.prayerStatuses, [prayer]: 'done' };
+        const allFiveDone = (['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as Prayer[])
+          .every(p => updatedStatuses[p] === 'done');
+
+        if (allFiveDone) {
+          const today = new Date().toDateString();
+          const notCounted = state.milestones.lastStreakDate !== today;
+          if (notCounted) {
+            milestoneUpdate = {
+              ...milestoneUpdate,
+              streakDays: state.milestones.streakDays + 1,
+              lastStreakDate: today,
+            };
+          }
+        }
+      }
+
+      return {
+        prayerStatuses: { ...state.prayerStatuses, [prayer]: status },
+        ...(Object.keys(milestoneUpdate).length > 0
+          ? { milestones: { ...state.milestones, ...milestoneUpdate } }
+          : {}),
+      };
+    }),
 
   resetDailyPrayers: () =>
     set({
@@ -201,38 +246,38 @@ export const useAppStore = create<AppState>()(
     Maghrib: null,
     Isha: null,
   },
-  setPrayerMood: (prayer, mood) =>
-    set((state) => ({
+  setPrayerMood: (prayer: Prayer, mood: MoodKey) =>
+    set((state: AppState) => ({
       prayerMoods: { ...state.prayerMoods, [prayer]: mood },
     })),
 
   ayahOfMyLife: null,
-  setAyahOfMyLife: (ayah) => set({ ayahOfMyLife: ayah }),
+  setAyahOfMyLife: (ayah: { arabic: string; translation: string; reference: string } | null) => set({ ayahOfMyLife: ayah }),
 
   lastReading: null,
-  setLastReading: (reading) => set({ lastReading: reading }),
+  setLastReading: (reading: { surahNumber: number; surahName: string; ayahNumber: number }) => set({ lastReading: reading }),
 
   playTranslationAudio: false,
-  setPlayTranslationAudio: (play) => set({ playTranslationAudio: play }),
+  setPlayTranslationAudio: (play: boolean) => set({ playTranslationAudio: play }),
   translationLang: 'en',
-  setTranslationLang: (lang) => set({ translationLang: lang }),
+  setTranslationLang: (lang: TranslationLangCode) => set({ translationLang: lang }),
   languagePacks: {
     en: 'installed', // Default preloads online fallback so always effectively installed
     ml: 'not_installed',
     hi: 'not_installed',
   },
-  setLanguagePackStatus: (lang, status) =>
-    set((state) => ({
+  setLanguagePackStatus: (lang: TranslationLangCode, status: PackStatus) =>
+    set((state: AppState) => ({
       languagePacks: { ...state.languagePacks, [lang]: status },
     })),
 
   adhanSettings: defaultAdhanSettings,
-  updateAdhanSettings: (settings) =>
-    set((state) => ({
+  updateAdhanSettings: (settings: Partial<AdhanSettings>) =>
+    set((state: AppState) => ({
       adhanSettings: { ...state.adhanSettings, ...settings },
     })),
-  updatePrayerAdhanSettings: (prayer, settings) =>
-    set((state) => ({
+  updatePrayerAdhanSettings: (prayer: Prayer, settings: Partial<AdhanPrayerSettings>) =>
+    set((state: AppState) => ({
       adhanSettings: {
         ...state.adhanSettings,
         prayers: {
@@ -243,11 +288,11 @@ export const useAppStore = create<AppState>()(
     })),
 
   isAdhanPlaying: false,
-  setAdhanPlaying: (playing) => set({ isAdhanPlaying: playing }),
+  setAdhanPlaying: (playing: boolean) => set({ isAdhanPlaying: playing }),
 
   sukoonEntries: [],
-  addSukoonEntry: (entry) =>
-    set((state) => ({
+  addSukoonEntry: (entry: Omit<SukoonEntry, 'id'>) =>
+    set((state: AppState) => ({
       sukoonEntries: [
         { ...entry, id: Date.now().toString() },
         ...state.sukoonEntries,
@@ -262,22 +307,66 @@ export const useAppStore = create<AppState>()(
     sukoonCount: 0,
     ayahSet: false,
     adhanStreakDays: 0,
+    lastQuranDate: '',
+    lastFajrDate: '',
+    lastStreakDate: '',
   },
-  incrementMilestone: (key) =>
-    set((state) => ({
+  incrementMilestone: (key: keyof AppState['milestones']) =>
+    set((state: AppState) => {
+      let streakUpdate = {};
+      if (key === 'quranDays') {
+        const today = new Date().toDateString();
+        const lastDay = state.milestones.lastQuranDate;
+        if (lastDay !== today) {
+          streakUpdate = {
+            lastQuranDate: today,
+          };
+        } else {
+          return state; // Already tracked today, abort increment
+        }
+      }
+      return {
+        milestones: {
+          ...state.milestones,
+          [key]: typeof state.milestones[key] === 'boolean'
+            ? true
+            : (state.milestones[key] as number || 0) + 1,
+          ...streakUpdate,
+        },
+      };
+    }),
+  decrementMilestone: (key: keyof AppState['milestones']) =>
+    set((state: AppState) => ({
       milestones: {
         ...state.milestones,
         [key]: typeof state.milestones[key] === 'boolean'
-          ? true
-          : (state.milestones[key] as number) + 1,
+          ? false
+          : Math.max(0, (state.milestones[key] as number) - 1),
       },
     })),
     }),
     {
       name: 'dheen-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
-      migrate: (persistedState: any, version: number) => {
+      version: 7,
+      migrate: (persistedState: any, _version: number) => {
+        if (_version < 7) {
+          return {
+            ...persistedState,
+            milestones: {
+              fajrCount: 0,
+              quranDays: 0,
+              tahajjudCount: 0,
+              streakDays: 0,
+              sukoonCount: 0,
+              ayahSet: false,
+              adhanStreakDays: 0,
+              lastQuranDate: '',
+              lastFajrDate: '',
+              lastStreakDate: '',
+            },
+          };
+        }
         return persistedState;
       },
     }

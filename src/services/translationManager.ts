@@ -6,7 +6,7 @@ const QURAN_API_BASE = 'https://api.alquran.cloud/v1';
 export const EDITION_MAP: Record<TranslationLangCode, string> = {
   en: 'en.asad',
   ml: 'ml.abdulhameed',
-  hi: 'hi.hindi'
+  hi: 'hi.farooq'
 };
 
 const getSurahTranslationKey = (lang: TranslationLangCode, surahNum: number) => `@quran_trans_${lang}_${surahNum}`;

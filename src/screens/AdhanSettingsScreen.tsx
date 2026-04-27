@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  SafeAreaView,
   TextInput,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +25,7 @@ import {
 import { syncPrayerNotifications, requestNotificationPermissions } from '../services/notificationManager';
 import { refreshDeviceCoordinates } from '../services/locationManager';
 import { isCached } from '../services/audioCache';
+import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper';
 
 const PRAYERS = [
   { id: 'Fajr',    icon: 'brightness-3',  label: 'Dawn Prayer',      color: Colors.secondary, special: true  },
@@ -69,10 +70,12 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
   const resync = () => syncPrayerNotifications().catch(() => {});
 
+  const bottomInset = useScreenBottomInset(false);
+
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       {/* Header */}
-      <SafeAreaView>
+      <View>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => { stopAdhan(); navigation.goBack(); }}>
@@ -80,15 +83,15 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Adhan Settings</Text>
           </View>
-          <View style={styles.avatar}>
-            <Text style={{ color: Colors.primary, fontSize: 16, fontWeight: 'bold' }}>
-              {profile.name?.[0]?.toUpperCase() || 'A'}
-            </Text>
-          </View>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
         </View>
-      </SafeAreaView>
+      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 96 }]} showsVerticalScrollIndicator={false}>
 
         {/* ── Download Progress ── */}
         {['makkah', 'madinah', 'alaqsa'].some(v => !downloadedVoices[v]) && (
@@ -256,28 +259,22 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
         <Text style={styles.sectionLabel}>RECITATION VOICE</Text>
         <View style={styles.voiceGrid}>
           {[
-            { id: 'makkah',  label: 'Makkah',  sub: 'Grand Mosque',     c1: '#0F6D5B', c2: '#005344' },
-            { id: 'madinah', label: 'Madinah', sub: "Prophet's Mosque", c1: '#B58C00', c2: '#745C00' },
-            { id: 'alaqsa',  label: 'Al-Aqsa', sub: 'Jerusalem',        c1: '#003B31', c2: '#002019' },
+            { id: 'makkah',  label: 'Adhan 1',  sub: 'Standard',     c1: '#0F6D5B', c2: '#005344' },
+            { id: 'madinah', label: 'Adhan 2', sub: "Melodic", c1: '#B58C00', c2: '#745C00' },
+            { id: 'alaqsa',  label: 'Adhan 3', sub: 'Classic',        c1: '#003B31', c2: '#002019' },
           ].map((voice) => {
             const isSelected = selectedVoice === voice.id;
             return (
               <TouchableOpacity
                 key={voice.id}
                 style={[styles.voiceCard, isSelected && styles.voiceCardSelected]}
-                onPress={async () => {
+                onPress={() => {
                   updateAllPrayers({ voice: voice.id });
-                  await stopAdhan();
-                  playAdhanPreview(voice.id, setPreviewLoading);
                 }}
                 activeOpacity={0.8}
               >
                 {isSelected && (
-                  previewLoading ? (
-                    <ActivityIndicator size="small" color={Colors.primary} style={styles.voiceCheck} />
-                  ) : (
-                    <MaterialIcons name="check-circle" size={20} color={Colors.primary} style={styles.voiceCheck} />
-                  )
+                  <MaterialIcons name="check-circle" size={20} color={Colors.primary} style={styles.voiceCheck} />
                 )}
                 <View style={styles.voiceAvatar}>
                   <LinearGradient colors={[voice.c1, voice.c2]} style={StyleSheet.absoluteFillObject} />
@@ -309,25 +306,6 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                 style={[styles.alertRow, isSelected && styles.alertRowSelected]}
                 onPress={() => {
                   updateAllPrayers({ alertType: mode.id });
-                  setAlertPreviewMode(mode.id);
-                  
-                  // Async IIFE to prevent overlapping sounds and unhandled promises
-                  (async () => {
-                    await stopAdhan(); // await completion before starting new audio
-                    try {
-                      if (mode.id === 'adhan') {
-                        await playFullAdhan(selectedVoice);
-                      } else if (mode.id === 'beep') {
-                        await playShortAdhan(selectedVoice);
-                      } else if (mode.id === 'silent_vibrate') {
-                        vibrateAdhan();
-                      }
-                    } catch (error) {
-                      console.error('[AdhanSettings] Alert Mode preview failed', error);
-                    } finally {
-                      setAlertPreviewMode(null);
-                    }
-                  })();
                 }}
               >
                 <View style={[styles.radio, isSelected && styles.radioSelected]}>
@@ -338,29 +316,62 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                   <Text style={[styles.alertLabel, isSelected && { color: Colors.primary }]}>{mode.label}</Text>
                   <Text style={styles.alertDesc}>{mode.desc}</Text>
                 </View>
-                {isSelected && alertPreviewMode === mode.id && isAdhanPlaying && (
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                )}
               </TouchableOpacity>
             );
           })}
         </View>
 
+        {/* ── Preview Adhan Button ── */}
+        <TouchableOpacity
+          style={styles.previewBtn}
+          onPress={async () => {
+            if (isAdhanPlaying) {
+              await stopAdhan();
+              setPreviewLoading(false);
+            } else {
+              setPreviewLoading(true);
+              if (selectedAlertType === 'silent_vibrate') {
+                vibrateAdhan();
+                setPreviewLoading(false);
+              } else if (selectedAlertType === 'beep') {
+                await playShortAdhan(selectedVoice);
+                setPreviewLoading(false);
+              } else {
+                await playFullAdhan(selectedVoice);
+                setPreviewLoading(false);
+              }
+            }
+          }}
+        >
+          {previewLoading ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : isAdhanPlaying ? (
+            <MaterialIcons name="pause" size={20} color={Colors.primary} />
+          ) : (
+            <MaterialIcons name="play-arrow" size={20} color={Colors.primary} />
+          )}
+          <Text style={styles.previewBtnText}>
+            {previewLoading ? 'Loading...' : isAdhanPlaying ? 'Stop Preview' : 'Preview Adhan'}
+          </Text>
+        </TouchableOpacity>
+
         {/* ── Pre-Alert ── */}
         <Text style={styles.sectionLabel}>PRE-ALERT REMINDER</Text>
-        <View style={[styles.masterCard, { marginBottom: Spacing['3xl'] }]}>
-          <View style={{ flex: 1 }}>
+        <View style={[styles.masterCard, { marginBottom: Spacing['3xl'], flexDirection: 'column', alignItems: 'flex-start', gap: 14 }]}>
+          <View>
             <Text style={styles.masterTitle}>Remind me before prayer</Text>
             <Text style={styles.masterSub}>Get a heads-up before the adhan plays</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             {([0, 5, 10, 15] as const).map((mins) => {
               const isSelected = adhanSettings.prayers.Fajr.preAlert === mins;
               return (
                 <TouchableOpacity
                   key={mins}
                   style={{
-                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 20,
                     backgroundColor: isSelected ? Colors.primary : '#eae8e3',
                   }}
                   onPress={async () => {
@@ -369,7 +380,9 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                   }}
                 >
                   <Text style={{
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: '700',
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 13,
+                    fontWeight: '700',
                     color: isSelected ? '#fff' : Colors.textMuted,
                   }}>
                     {mins === 0 ? 'Off' : `${mins}m`}
@@ -380,11 +393,10 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        <View style={{ height: 140 }} />
       </ScrollView>
 
       {/* Save / Apply Button */}
-      <View style={styles.saveContainer}>
+      <View style={[styles.saveContainer, { paddingBottom: bottomInset }]}>
         <TouchableOpacity
           style={styles.saveBtn}
           activeOpacity={0.85}
@@ -397,8 +409,8 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           <Text style={styles.saveBtnText}>Save Adhan Settings</Text>
         </TouchableOpacity>
       </View>
-    </View>
-  );
+    </ScreenWrapper>
+);
 };
 
 const styles = StyleSheet.create({
@@ -409,9 +421,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(251,249,244,0.8)',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: '700', color: Colors.primary },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eae8e3', borderWidth: 2, borderColor: 'rgba(0,83,68,0.1)', alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.primary, marginLeft: 12 },
+  headerLogo: { width: 32, height: 32, borderRadius: 8 },
+  scrollContent: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md },
   progressContainer: {
     padding: Spacing.md,
     backgroundColor: 'rgba(15,109,91,0.05)',
@@ -436,10 +448,11 @@ const styles = StyleSheet.create({
   },
   masterCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: Spacing.xl, borderRadius: 20, backgroundColor: '#f5f3ee',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginBottom: Spacing['3xl'],
+    padding: Spacing.lg, paddingRight: 16, borderRadius: 16, backgroundColor: '#f5f3ee',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginBottom: Spacing['2xl'],
+    gap: 12,
   },
-  masterLeft: { flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 },
+  masterLeft: { flexDirection: 'row', alignItems: 'center', gap: 16, flexShrink: 1 },
   masterIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(0,83,68,0.1)', alignItems: 'center', justifyContent: 'center' },
   masterTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: '700', color: Colors.textDark, marginBottom: 2 },
   masterSub: { fontFamily: 'Manrope', fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
@@ -447,13 +460,13 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Plus Jakarta Sans', fontSize: 10, fontWeight: '800',
     color: Colors.secondary, letterSpacing: 3, textTransform: 'uppercase',
-    marginBottom: Spacing.lg, opacity: 0.7,
+    marginBottom: Spacing.md, opacity: 0.7,
   },
 
   // Location
   locationCard: {
-    backgroundColor: '#f5f3ee', borderRadius: 20, padding: Spacing.xl,
-    marginBottom: Spacing['3xl'],
+    backgroundColor: '#f5f3ee', borderRadius: 16, padding: Spacing.lg,
+    marginBottom: Spacing['2xl'],
   },
   locationRow: { flexDirection: 'row', alignItems: 'center' },
   manualLocationBlock: { marginTop: 16, gap: 8 },
@@ -464,8 +477,8 @@ const styles = StyleSheet.create({
   },
 
   // Prayer list
-  prayerList: { gap: 16, marginBottom: Spacing['3xl'] },
-  prayerCard: { backgroundColor: '#fff', borderRadius: 20, padding: Spacing.xl, position: 'relative', overflow: 'hidden' },
+  prayerList: { gap: 10, marginBottom: Spacing['2xl'] },
+  prayerCard: { backgroundColor: '#fff', borderRadius: 16, padding: Spacing.lg, position: 'relative', overflow: 'hidden' },
   prayerCardGlow: { position: 'absolute', top: -64, right: -64, width: 128, height: 128, borderRadius: 64, backgroundColor: 'rgba(115,92,0,0.05)' },
   prayerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   prayerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
@@ -482,19 +495,19 @@ const styles = StyleSheet.create({
   fajrExtraSub: { fontFamily: 'Manrope', fontSize: 12, color: 'rgba(115,92,0,0.6)' },
 
   // Voice
-  voiceGrid: { flexDirection: 'row', gap: 12, marginBottom: Spacing['3xl'], flexWrap: 'wrap' },
+  voiceGrid: { flexDirection: 'row', gap: 10, marginBottom: Spacing['2xl'], flexWrap: 'wrap' },
   voiceCard: {
-    flex: 1, minWidth: 90, padding: 14, borderRadius: 16, borderWidth: 2, borderColor: 'transparent',
-    backgroundColor: '#f0eee9', alignItems: 'center', gap: 10, position: 'relative',
+    flex: 1, minWidth: 90, padding: 12, borderRadius: 14, borderWidth: 2, borderColor: 'transparent',
+    backgroundColor: '#f0eee9', alignItems: 'center', gap: 8, position: 'relative',
   },
   voiceCardSelected: { borderColor: Colors.primary, backgroundColor: 'rgba(0,83,68,0.05)' },
   voiceCheck: { position: 'absolute', top: 8, right: 8 },
-  voiceAvatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#eae8e3', overflow: 'hidden' },
+  voiceAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#eae8e3', overflow: 'hidden' },
   voiceName: { fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '700', color: Colors.textDark },
   voiceSub: { fontFamily: 'Manrope', fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
 
   // Alert mode
-  alertList: { gap: 8, marginBottom: Spacing['3xl'] },
+  alertList: { gap: 6, marginBottom: Spacing['2xl'] },
   alertRow: {
     flexDirection: 'row', alignItems: 'center',
     padding: 16, borderRadius: 16, backgroundColor: '#f0eee9',
@@ -507,11 +520,22 @@ const styles = StyleSheet.create({
   alertLabel: { fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: '700', color: Colors.textDark },
   alertDesc: { fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted, marginTop: 2 },
 
+  // Preview Button
+  previewBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14, borderRadius: 14,
+    borderWidth: 1.5, borderColor: Colors.primary,
+    backgroundColor: 'rgba(0,83,68,0.05)',
+  },
+  previewBtnText: {
+    fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: '700', color: Colors.primary,
+  },
+
   // Save
   saveContainer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: Spacing.xl, paddingBottom: 40, paddingTop: 20,
-    backgroundColor: 'transparent',
+    paddingHorizontal: Spacing.xl, paddingTop: 12,
+    backgroundColor: 'rgba(251,249,244,0.97)',
   },
   saveBtn: {
     height: 60, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center',

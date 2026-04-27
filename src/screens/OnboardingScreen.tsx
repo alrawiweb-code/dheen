@@ -6,7 +6,6 @@ import {
   Dimensions,
   Image,
   TouchableOpacity,
-  SafeAreaView,
   Platform,
   TextInput,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, NativeSpacing as Spacing } from '../theme';
 import { useAppStore } from '../store/useAppStore';
+import { ScreenWrapper } from '../components/ScreenWrapper';
 
 const { width, height } = Dimensions.get('window');
 const ONBOARDING_DONE_KEY = '@dheen_onboarding_done';
@@ -69,12 +69,14 @@ export const OnboardingScreen = ({ navigation }: any) => {
   };
 
   const enterApp = async () => {
+    const finalName = name.trim() || 'Friend';
     try {
-      await AsyncStorage.setItem(ONBOARDING_DONE_KEY, 'true');
+      await AsyncStorage.setItem('hasOnboarded', 'true');
+      await AsyncStorage.setItem('userName', finalName);
     } catch (_) {
       // Non-critical — still navigate
     }
-    setProfile({ name: name.trim() || 'Friend', onboardingComplete: true });
+    setProfile({ name: finalName, onboardingComplete: true });
     navigation.replace('Root');
   };
 
@@ -82,7 +84,7 @@ export const OnboardingScreen = ({ navigation }: any) => {
   const isDark = slide.isDark;
 
   return (
-    <View style={[styles.container, { backgroundColor: slide.bg }]}>
+    <ScreenWrapper>
 
       {/* ── Slide 3 dark gradient background ── */}
       {isDark && (
@@ -100,7 +102,7 @@ export const OnboardingScreen = ({ navigation }: any) => {
         />
       )}
 
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         {/* ── Label ── */}
         <View style={styles.header}>
           <Text style={[styles.label, isDark && styles.labelDark]}>
@@ -115,9 +117,10 @@ export const OnboardingScreen = ({ navigation }: any) => {
           {currentIndex === 0 && (
             <>
               <View style={styles.imageContainer}>
-                <LinearGradient
-                  colors={['#0F6D5B', '#eae8e3']}
-                  style={styles.circleImage}
+                <Image
+                  source={require('../../assets/icon.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
                 />
               </View>
               <View style={styles.textWrapper}>
@@ -150,7 +153,7 @@ export const OnboardingScreen = ({ navigation }: any) => {
                   <View style={[styles.iconBox, { backgroundColor: f.bg }]}>
                     <MaterialIcons name={f.icon as any} size={28} color={f.color} />
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.featureTitle}>{f.title}</Text>
                     <Text style={styles.featureDesc}>{f.desc}</Text>
                   </View>
@@ -178,9 +181,10 @@ export const OnboardingScreen = ({ navigation }: any) => {
           {currentIndex === 2 && (
             <>
               <View style={styles.archImageContainer}>
-                <LinearGradient
-                  colors={['#0F6D5B', '#002019']}
+                <Image
+                  source={require('../assets/arch.jpg')}
                   style={styles.archImage}
+                  resizeMode="cover"
                 />
               </View>
               <View style={styles.textWrapperDark}>
@@ -208,7 +212,7 @@ export const OnboardingScreen = ({ navigation }: any) => {
                   <Text style={styles.enterText}>Enter App</Text>
                 </TouchableOpacity>
                 <Text style={styles.footerPrivacy}>
-                  PRIVACY FOCUSED • AD FREE • OPEN SOURCE
+                  PRIVACY FOCUSED
                 </Text>
               </View>
             </>
@@ -231,8 +235,8 @@ export const OnboardingScreen = ({ navigation }: any) => {
           ))}
         </View>
 
-      </SafeAreaView>
-    </View>
+      </View>
+    </ScreenWrapper>
   );
 };
 
@@ -255,14 +259,19 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     paddingHorizontal: 32,
+    paddingVertical: 16,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-evenly',
   },
 
   // Slide 0
-  imageContainer: { width: 270, height: 270, marginBottom: 36, alignItems: 'center', justifyContent: 'center' },
-  circleImage: { width: 250, height: 250, borderRadius: 125, borderWidth: 4, borderColor: '#f0eee9' },
-  textWrapper: { alignItems: 'center', marginBottom: 32 },
+  imageContainer: { width: 270, height: 270, marginBottom: 16, alignItems: 'center', justifyContent: 'center' },
+  logoImage: {
+    width: 240,
+    height: 240,
+    borderRadius: 48,
+  },
+  textWrapper: { alignItems: 'center', marginBottom: 16 },
   title: {
     fontFamily: 'Plus Jakarta Sans', fontSize: 28, fontWeight: '800',
     color: Colors.primary, textAlign: 'center', marginBottom: 12, lineHeight: 36,
@@ -281,7 +290,7 @@ const styles = StyleSheet.create({
   },
 
   // Slide 1
-  featuresWrapper: { width: '100%', flex: 1, justifyContent: 'center' },
+  featuresWrapper: { width: '100%', paddingTop: 8 },
   featureCard: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
     padding: 20, borderRadius: 24, marginBottom: 16,
@@ -291,7 +300,7 @@ const styles = StyleSheet.create({
   iconBox: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   featureTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: '700', color: Colors.primary, marginBottom: 4 },
   featureDesc: { fontFamily: 'Manrope', fontSize: 14, color: '#3f4945' },
-  navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 },
+  navRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
   backBtn: { paddingVertical: 12, paddingHorizontal: 16 },
   backText: { fontFamily: 'Manrope', fontWeight: '600', color: Colors.primary, opacity: 0.5 },
   nextBtn: {
@@ -303,9 +312,13 @@ const styles = StyleSheet.create({
   // Slide 2
   archImageContainer: { marginBottom: 32 },
   archImage: {
-    width: 192, height: 256,
-    borderTopLeftRadius: 96, borderTopRightRadius: 96,
-    borderWidth: 1, borderColor: 'rgba(154,236,213,0.2)',
+    width: 192,
+    height: 256,
+    borderTopLeftRadius: 96,
+    borderTopRightRadius: 96,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(154,236,213,0.2)',
   },
   textWrapperDark: { alignItems: 'center', marginBottom: 32 },
   titleDark: {

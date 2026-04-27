@@ -8,10 +8,12 @@ import {
   Dimensions,
   TouchableOpacity,
   StatusBar,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Colors, Typography, Spacing, BorderRadius } from '../theme';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../store/useAppStore';
 import { HapticButton } from '../components/HapticButton';
 import { playAdhan, stopAdhan } from '../services/adhanManager';
@@ -35,12 +37,12 @@ const PRAYER_GRADIENTS: Record<PrayerKey, readonly [string, string, string]> = {
   Isha: ['#0A1F14', '#0D2B1F', '#0F3D29'],
 };
 
-const PRAYER_DESCRIPTIONS: Record<PrayerKey, { emoji: string; arabic: string; illustration: string }> = {
-  Fajr: { emoji: '🌙', arabic: 'الفجر', illustration: '🌅' },
-  Dhuhr: { emoji: '☀️', arabic: 'الظهر', illustration: '🌞' },
-  Asr: { emoji: '🌤️', arabic: 'العصر', illustration: '🌄' },
-  Maghrib: { emoji: '🌅', arabic: 'المغرب', illustration: '🌇' },
-  Isha: { emoji: '🌙', arabic: 'العشاء', illustration: '🌃' },
+const PRAYER_DESCRIPTIONS: Record<PrayerKey, { icon: string; arabic: string; illustration: string }> = {
+  Fajr: { icon: 'nightlight-round', arabic: 'الفجر', illustration: 'wb-twilight' },
+  Dhuhr: { icon: 'wb-sunny', arabic: 'الظهر', illustration: 'wb-sunny' },
+  Asr: { icon: 'wb-cloudy', arabic: 'العصر', illustration: 'wb-cloudy' },
+  Maghrib: { icon: 'wb-twilight', arabic: 'المغرب', illustration: 'nights-stay' },
+  Isha: { icon: 'nightlight-round', arabic: 'العشاء', illustration: 'dark-mode' },
 };
 
 export const AdhanAlertScreen = ({ route, navigation }: any) => {
@@ -126,7 +128,7 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
         body: `Your snoozed ${prayer} prayer reminder`,
         data: { intent: 'play_adhan', prayer, voiceKey: adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah', alertType: 'beep' },
       },
-      trigger: { seconds: 300 }, // 5 minutes
+      trigger: { seconds: 300 } as any, // 5 minutes
     });
     navigation.goBack();
   };
@@ -137,7 +139,9 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
       <LinearGradient colors={[...gradColors]} style={StyleSheet.absoluteFill} />
 
       {/* Illustration */}
-      <Text style={styles.illustration}>{prayerInfo.illustration}</Text>
+      <View style={styles.illustration}>
+        <MaterialIcons name={prayerInfo.illustration as any} size={48} color="rgba(255,255,255,0.5)" />
+      </View>
 
       {/* Concentric rings */}
       <View style={styles.ringsContainer}>
@@ -156,15 +160,19 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
             ]}
           />
         ))}
-        {/* Crescent center */}
-        <Animated.Text style={[styles.crescent, { transform: [{ scale: crescentScale }] }]}>
-          ☪
-        </Animated.Text>
+        {/* Logo center */}
+        <Animated.View style={{ transform: [{ scale: crescentScale }] }}>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={{ width: 64, height: 64, borderRadius: 12 }}
+            resizeMode="contain"
+          />
+        </Animated.View>
       </View>
 
       {/* Text Content */}
       <View style={styles.textContent}>
-        <Text style={styles.prayerEmoji}>{prayerInfo.emoji}</Text>
+        <MaterialIcons name={prayerInfo.icon as any} size={32} color="rgba(255,255,255,0.8)" style={{ marginBottom: Spacing.sm }} />
         <Text style={styles.prayerName}>{prayer}</Text>
         <Text style={styles.prayerArabic}>{prayerInfo.arabic}</Text>
 
@@ -210,8 +218,8 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingTop: 80 },
-  illustration: { fontSize: 48, position: 'absolute', top: 100, opacity: 0.5 },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'space-between' },
+  illustration: { position: 'absolute', top: 100, alignItems: 'center', justifyContent: 'center' },
   ringsContainer: {
     width: 220,
     height: 220,
@@ -224,7 +232,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.primary,
   },
-  crescent: { fontSize: 52, color: Colors.accent },
+  crescent: {},
   textContent: { alignItems: 'center', marginTop: Spacing.xl },
   prayerEmoji: { fontSize: 32, marginBottom: Spacing.sm },
   prayerName: { fontSize: 32, fontWeight: Typography.weights.bold, color: '#fff', letterSpacing: 1 },

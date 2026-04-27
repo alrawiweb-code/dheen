@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform, Alert } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
-import { PrayerTimes, fetchPrayerTimes, fetchPrayerTimesByCity } from './prayerTimes';
+import { PrayerTimes, getCalendarForMonth, DailyPrayerData } from './prayerTimes';
 import { handleAdhanTrigger } from './adhanManager';
 import { Prayer } from '../theme';
 import { navigationRef } from '../navigation/RootNavigator';
@@ -11,13 +11,17 @@ import { navigationRef } from '../navigation/RootNavigator';
  * We intercept foreground triggers silently (shouldShowAlert: false)
  * because we manually force play the audio instantly via our listener instead.
  */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 /**
  * Requests native notification permissions from the OS.
  */
@@ -44,7 +48,9 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
  * Main Scheduling engine. Cleans history and schedules standard 
  * OS background triggers for today's required Adhan configurations.
  */
-export const syncPrayerNotifications = async (customTimes?: PrayerTimes) => {
+export const syncPrayerNotifications = async () => {
+  if (Platform.OS === 'web') return;
+
   const store = useAppStore.getState();
   const settings = store.adhanSettings;
   const profile = store.profile;
@@ -58,107 +64,144 @@ export const syncPrayerNotifications = async (customTimes?: PrayerTimes) => {
     return;
   }
 
-  // Determine optimal prayer times natively in the sync wrapper
-  let resolvedTimes: PrayerTimes | null = customTimes || null;
+  const options = {
+    latitude: profile.latitude ?? undefined,
+    longitude: profile.longitude ?? undefined,
+    city: profile.city || undefined,
+    country: profile.country || undefined,
+  };
+
+  const now = new Date();
+  let daysData: DailyPrayerData[] = [];
   
-  if (!resolvedTimes) {
-    try {
-      if (profile.autoLocation && profile.latitude && profile.longitude) {
-        const payload = await fetchPrayerTimes(profile.latitude, profile.longitude);
-        resolvedTimes = payload.times;
-      } else if (profile.city) {
-        const payload = await fetchPrayerTimesByCity(profile.city, profile.country);
-        resolvedTimes = payload.times;
+  try {
+    const currentMonthData = await getCalendarForMonth(now, options);
+    daysData = [...currentMonthData];
+
+    // Check if we need next month's data to cover the next 6 days
+    if (now.getDate() >= 25) {
+      const nextMonthDate = new Date(now);
+      nextMonthDate.setMonth(now.getMonth() + 1);
+      nextMonthDate.setDate(1);
+      try {
+        const nextMonthData = await getCalendarForMonth(nextMonthDate, options);
+        daysData = [...daysData, ...nextMonthData];
+      } catch (e) {
+        console.warn('[NotificationManager] Could not prefetch next month for notifications', e);
       }
-    } catch (e) {
-      console.warn('[NotificationManager] Failed silent dynamic prayer sync.', e);
-      return;
     }
+  } catch (e) {
+    console.error('[NotificationManager] Failed to get calendar for notifications', e);
+    return;
   }
 
-  if (!resolvedTimes) return;
-
   const prayers: Prayer[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-  const now = new Date();
+  let scheduledCount = 0;
+  const MAX_NOTIFICATIONS = 60; // Keep safely under iOS 64 limit
 
-  for (const prayer of prayers) {
-    const prayerConfig = settings.prayers[prayer];
+  // Loop through today and the next 5 days (6 days total)
+  for (let offset = 0; offset < 6; offset++) {
+    if (scheduledCount >= MAX_NOTIFICATIONS) break;
+
+    const targetDate = new Date(now);
+    targetDate.setDate(now.getDate() + offset);
     
-    // Skip unselected configurations
-    if (!prayerConfig.enabled) continue;
-
-    // Parse '14:30' from API into Date object targeted for today
-    const timeStr = resolvedTimes[prayer];
-    if (!timeStr) continue;
-
-    const [hour, minute] = timeStr.split(':').map(Number);
-    const triggerDate = new Date();
-    triggerDate.setHours(hour, minute, 0, 0);
-
-    // If it's already passed today, schedule for tomorrow instead.
-    if (triggerDate < now) {
-      triggerDate.setDate(triggerDate.getDate() + 1);
+    // Format DD-MM-YYYY to find in daysData
+    const dayStr = `${String(targetDate.getDate()).padStart(2, '0')}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${targetDate.getFullYear()}`;
+    let dayData = daysData.find(d => d.dateStr === dayStr);
+    
+    // OFFLINE MONTH TRANSITION FIX: 
+    // If user is offline at the end of the month, we can't fetch next month's calendar.
+    // Instead of missing notifications, we fallback to the last known day's schedule (e.g. 30th's times for the 1st).
+    // The time difference is usually < 2 minutes, which is vastly better than silent adhans.
+    if (!dayData && daysData.length > 0) {
+      dayData = daysData[daysData.length - 1];
     }
+    
+    if (!dayData) continue;
 
-    if (settings.quietHoursEnabled) {
-      const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
-      const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
-      const triggerMins = hour * 60 + minute;
-      const fromMins = quietFromH * 60 + quietFromM;
-      const toMins = quietToH * 60 + quietToM;
+    for (const prayer of prayers) {
+      if (scheduledCount >= MAX_NOTIFICATIONS) break;
 
-      const isInQuietHours = fromMins > toMins
-        ? (triggerMins >= fromMins || triggerMins < toMins)  // overnight quiet period
-        : (triggerMins >= fromMins && triggerMins < toMins);
+      const prayerConfig = settings.prayers[prayer];
+      
+      // Skip unselected configurations
+      if (!prayerConfig.enabled) continue;
 
-      if (isInQuietHours) {
-        // Allow Fajr during quiet if setting is enabled
-        if (!(prayer === 'Fajr' && settings.allowFajrDuringQuiet)) {
-          console.log(`[NotificationManager] ${prayer} blocked by quiet hours.`);
-          continue;
+      const timeStr = dayData.times[prayer as keyof typeof dayData.times] as string;
+      if (!timeStr) continue;
+
+      const [hour, minute] = timeStr.split(':').map(Number);
+      const triggerDate = new Date(targetDate);
+      triggerDate.setHours(hour, minute, 0, 0);
+
+      // Skip if time has already passed
+      if (triggerDate <= now) continue;
+
+      if (settings.quietHoursEnabled) {
+        const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
+        const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
+        const triggerMins = hour * 60 + minute;
+        const fromMins = quietFromH * 60 + quietFromM;
+        const toMins = quietToH * 60 + quietToM;
+
+        const isInQuietHours = fromMins > toMins
+          ? (triggerMins >= fromMins || triggerMins < toMins)  // overnight quiet period
+          : (triggerMins >= fromMins && triggerMins < toMins);
+
+        if (isInQuietHours) {
+          // Allow Fajr during quiet if setting is enabled
+          if (!(prayer === 'Fajr' && settings.allowFajrDuringQuiet)) {
+            console.log(`[NotificationManager] ${prayer} on ${dayStr} blocked by quiet hours.`);
+            continue;
+          }
+        }
+      }
+
+      console.log(`[NotificationManager] Scheduling ${prayer} at ${triggerDate.toLocaleString()}`);
+      
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `${prayer} Prayer Time`,
+          body: `It's time for ${prayer} prayer`,
+          sound: prayerConfig.alertType === 'beep' ? 'default' : undefined, 
+          data: { 
+              intent: 'play_adhan', 
+              prayer, 
+              voiceKey: prayerConfig.voice,
+              alertType: prayerConfig.alertType 
+          },
+        },
+        trigger: { date: triggerDate } as any,
+      });
+      scheduledCount++;
+
+      // Schedule pre-alert if configured
+      if (prayerConfig.preAlert > 0 && scheduledCount < MAX_NOTIFICATIONS) {
+        const preAlertDate = new Date(triggerDate.getTime() - prayerConfig.preAlert * 60 * 1000);
+        if (preAlertDate > now) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `${prayer} in ${prayerConfig.preAlert} minutes`,
+              body: `Prepare for ${prayer} prayer`,
+              data: { intent: 'pre_alert', prayer },
+            },
+            trigger: { date: preAlertDate } as any,
+          });
+          scheduledCount++;
         }
       }
     }
-
-    console.log(`[NotificationManager] Scheduling ${prayer} at ${triggerDate.toLocaleString()}`);
-    
-    // The payload data helps us uniquely identify what to play on Foreground response
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `${prayer} Prayer Time`,
-        body: `It's time for ${prayer} prayer`,
-        sound: prayerConfig.alertType === 'beep' ? 'default' : undefined, 
-        data: { 
-            intent: 'play_adhan', 
-            prayer, 
-            voiceKey: prayerConfig.voice,
-            alertType: prayerConfig.alertType 
-        },
-      },
-      trigger: triggerDate,
-    });
-
-    // Schedule pre-alert if configured
-    if (prayerConfig.preAlert > 0) {
-      const preAlertDate = new Date(triggerDate.getTime() - prayerConfig.preAlert * 60 * 1000);
-      if (preAlertDate > now) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `${prayer} in ${prayerConfig.preAlert} minutes`,
-            body: `Prepare for ${prayer} prayer`,
-            data: { intent: 'pre_alert', prayer },
-          },
-          trigger: preAlertDate,
-        });
-      }
-    }
   }
+  console.log(`[NotificationManager] Successfully scheduled ${scheduledCount} local notifications for the next 6 days.`);
 };
 
 /**
  * Initializes listeners dynamically on App boot.
  */
 export const initializeNotificationEngine = () => {
+  if (Platform.OS === 'web') return () => {};
+
   // Fire permission request on boot
   requestNotificationPermissions().then((granted) => {
     if (!granted) {

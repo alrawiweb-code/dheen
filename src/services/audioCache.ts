@@ -4,14 +4,36 @@
  * Downloads Adhan MP3 files once and stores them permanently in the app's
  * document directory. On subsequent accesses, plays from the local file
  * directly — no network required.
+ *
+ * Web guard: expo-file-system has no web implementation.
+ * All functions safely no-op / return null on web.
  */
 
-import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 
-const CACHE_DIR = `${FileSystem.documentDirectory}adhan_cache/`;
+// Dynamically require expo-file-system only on native to avoid web crash.
+// On web, FileSystem.documentDirectory is null and createDownloadResumable
+// does not exist — importing it at module level crashes the JS bundle.
+function getFileSystem(): typeof import('expo-file-system/legacy') | null {
+  if (Platform.OS === 'web') return null;
+  try {
+    return require('expo-file-system/legacy');
+  } catch {
+    return null;
+  }
+}
+
+function getCacheDir(): string | null {
+  const fs = getFileSystem();
+  if (!fs || !fs.documentDirectory) return null;
+  return `${fs.documentDirectory}adhan_cache/`;
+}
 
 // Ensure the cache directory exists (idempotent)
 const ensureCacheDir = async (): Promise<void> => {
+  const FileSystem = getFileSystem();
+  const CACHE_DIR = getCacheDir();
+  if (!FileSystem || !CACHE_DIR) return;
   const info = await FileSystem.getInfoAsync(CACHE_DIR);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(CACHE_DIR, { intermediates: true });
@@ -21,15 +43,21 @@ const ensureCacheDir = async (): Promise<void> => {
 /**
  * Returns the local cache path for a given voice key.
  */
-export const getCachedFilePath = (voiceKey: string): string =>
-  `${CACHE_DIR}${voiceKey}.mp3`;
+export const getCachedFilePath = (voiceKey: string): string | null => {
+  const CACHE_DIR = getCacheDir();
+  if (!CACHE_DIR) return null;
+  return `${CACHE_DIR}${voiceKey}.mp3`;
+};
 
 /**
  * Checks if an audio file has already been downloaded and cached.
  */
 export const isCached = async (voiceKey: string): Promise<boolean> => {
+  const FileSystem = getFileSystem();
+  if (!FileSystem) return false;
   try {
     const path = getCachedFilePath(voiceKey);
+    if (!path) return false;
     const info = await FileSystem.getInfoAsync(path);
     return info.exists && (info.size ?? 0) > 10_000; // At least 10KB — not a corrupt stub
   } catch {
@@ -47,10 +75,14 @@ export const downloadAndCache = async (
   remoteUrl: string,
   onProgress?: (progress: number) => void,
 ): Promise<string | null> => {
+  const FileSystem = getFileSystem();
+  if (!FileSystem) return null; // Web — skip silently
+
   try {
     await ensureCacheDir();
 
     const localPath = getCachedFilePath(voiceKey);
+    if (!localPath) return null;
 
     // If already cached and valid, return immediately
     if (await isCached(voiceKey)) {
@@ -96,16 +128,21 @@ export const resolveAudioUri = async (
   voiceKey: string,
   remoteUrl: string,
 ): Promise<string> => {
+  // On web, always return the remote URL (no local caching)
+  if (Platform.OS === 'web') return remoteUrl;
+
   // Fast path: already cached
   if (await isCached(voiceKey)) {
     const local = getCachedFilePath(voiceKey);
-    console.log(`[AudioCache] Using cached file: ${local}`);
-    return local;
+    if (local) {
+      console.log(`[AudioCache] Using cached file: ${local}`);
+      return local;
+    }
   }
 
   // Not cached yet — return remote URL and trigger background download
   console.log(`[AudioCache] Cache MISS for ${voiceKey}, using remote. Downloading in background…`);
-  downloadAndCache(voiceKey, remoteUrl).catch(() => {});
+  downloadAndCache(voiceKey, remoteUrl).catch(() => { });
 
   return remoteUrl;
 };
@@ -114,7 +151,11 @@ export const resolveAudioUri = async (
  * Deletes all cached audio files (for use in settings / reset).
  */
 export const clearAudioCache = async (): Promise<void> => {
+  const FileSystem = getFileSystem();
+  if (!FileSystem) return;
   try {
+    const CACHE_DIR = getCacheDir();
+    if (!CACHE_DIR) return;
     const info = await FileSystem.getInfoAsync(CACHE_DIR);
     if (info.exists) {
       await FileSystem.deleteAsync(CACHE_DIR, { idempotent: true });
