@@ -28,8 +28,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A3D2B"
       },
-      "package": "com.dheen.app",
-      "versionCode": 2,
+      "package": "com.alrawi.muslimpro",
+      "versionCode": 3,
+      "blockedPermissions": [
+        "android.permission.ACTIVITY_RECOGNITION"
+      ],
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
