@@ -170,6 +170,8 @@ class QuranAudioDownloadManager {
           try {
             const result = await FileSystem.downloadAsync(url, localPath);
 
+            if (this._aborted || hasError) return;
+
             if (result.status !== 200) {
               throw new Error(`HTTP ${result.status} for ayah ${n}`);
             }

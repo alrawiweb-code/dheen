@@ -9,6 +9,8 @@ import {
   Animated,
   Modal,
   Platform,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import { FlashList, FlashListRef } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -95,7 +97,8 @@ const AyahItem = React.memo(({
   isLoadingThis,
   currentProgress,
   onLongPress,
-  onPress
+  onPress,
+  onLayout,
 }: {
   item: Ayah;
   isActive: boolean;
@@ -209,6 +212,90 @@ export const QuranReader = ({ route, navigation }: any) => {
   const [currentProgress, setCurrentProgress] = useState(0); 
   const [isPaused, setIsPaused] = useState(false);
 
+  const [scrubberVisible, setScrubberVisible] = useState(false);
+  const [scrubberAyah, setScrubberAyah] = useState(1);
+  const ayahsRef = useRef<Ayah[]>([]);
+  const ayahHeightsRef = useRef<Record<number, number>>({});
+  const scrubberTrackRef = useRef<{ y: number; height: number }>({ y: 0, height: 0 });
+  const totalContentHeightRef = useRef(0);
+  const currentScrollOffsetRef = useRef(0);
+  const scrubberTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listHeightRef = useRef(0);
+  const scrubberY = useRef(new Animated.Value(0)).current;
+  const isDragging = useRef(false);
+
+  const SCRUBBER_TRACK_HEIGHT = Dimensions.get('window').height * 0.55;
+  const SCRUBBER_TOP_OFFSET = 120; // approx below header
+
+  const handleScrubberMove = useCallback((pageY: number) => {
+    const currentAyahs = ayahsRef.current;
+    if (currentAyahs.length === 0) return;
+
+    const { y: trackY, height: trackHeight } = scrubberTrackRef.current;
+    if (trackHeight === 0) return;
+
+    // Position of finger within the track, clamped 0..trackHeight
+    const relativeY = pageY - trackY;
+    const clampedY = Math.max(0, Math.min(relativeY, trackHeight));
+    const fraction = clampedY / trackHeight;
+
+    // Update handle visual
+    scrubberY.setValue(clampedY);
+
+    // Ayah label — use round and multiply by length-1 so
+    // fraction=0 → ayah 1, fraction=1 → last ayah exactly
+    const ayahIndex = Math.min(
+      Math.round(fraction * (currentAyahs.length - 1)),
+      currentAyahs.length - 1
+    );
+    setScrubberAyah(currentAyahs[ayahIndex].numberInSurah ?? ayahIndex + 1);
+
+    // Scroll using total content height — no estimation needed
+    const totalHeight = totalContentHeightRef.current;
+    if (totalHeight === 0) return;
+
+    const listHeight = Dimensions.get('window').height;
+    const maxOffset = Math.max(0, totalHeight - listHeight);
+    const targetOffset = fraction * maxOffset;
+
+    flatListRef.current?.scrollToOffset({
+      offset: targetOffset,
+      animated: false,
+    });
+  }, [scrubberY]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onShouldBlockNativeResponder: () => true,
+
+      onPanResponderGrant: (evt) => {
+        isDragging.current = true;
+        if (scrubberTimeout.current) clearTimeout(scrubberTimeout.current);
+        setScrubberVisible(true);
+        // Handle the initial touch position immediately
+        handleScrubberMove(evt.nativeEvent.pageY);
+      },
+
+      onPanResponderMove: (evt) => {
+        handleScrubberMove(evt.nativeEvent.pageY);
+      },
+
+      onPanResponderRelease: () => {
+        isDragging.current = false;
+        scrubberTimeout.current = setTimeout(() => {
+          setScrubberVisible(false);
+        }, 1200);
+      },
+
+      onPanResponderTerminate: () => {
+        isDragging.current = false;
+        setScrubberVisible(false);
+      },
+    })
+  ).current;
+
   // ── Ayah of My Life state ─────────────────────────────────────
   const [showModal, setShowModal] = useState(false);
   const [selectedAyah, setSelectedAyah] = useState<Ayah | null>(null);
@@ -243,6 +330,7 @@ export const QuranReader = ({ route, navigation }: any) => {
         
         setSurahInfo(surah);
         setAyahs(a);
+        ayahsRef.current = a;
         setLastReading({
           surahNumber: surah.number,
           surahName: surah.englishName,
@@ -710,8 +798,12 @@ export const QuranReader = ({ route, navigation }: any) => {
   // MAIN RENDER
   // ─────────────────────────────────────────────────────────────
 
-  const bottomInset = useScreenBottomInset(false); // stack screen — no tab bar
   const insets = useSafeAreaInsets();
+  const bottomInset = useScreenBottomInset(false); // stack screen — no tab bar
+
+  // New safe bottom — guarantees minimum clearance on all Android nav types
+  const NAV_BAR_EXTRA = Platform.OS === 'android' ? 56 : 0;
+  const safeBottom = Math.max(bottomInset, insets.bottom + NAV_BAR_EXTRA);
 
   return (
     <ScreenWrapper>
@@ -755,9 +847,16 @@ export const QuranReader = ({ route, navigation }: any) => {
           estimatedItemSize={150}
           keyExtractor={(a) => String(a.number)}
           renderItem={renderAyah}
+          onScroll={(evt) => {
+            currentScrollOffsetRef.current = evt.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
+          onContentSizeChange={(_w, h) => {
+            totalContentHeightRef.current = h;
+          }}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: bottomInset + (isAnythingPlaying ? 100 : 0) }
+            { paddingBottom: safeBottom + (isAnythingPlaying ? 100 : 0) }
           ]}
           showsVerticalScrollIndicator={false}
           extraData={{ activeAyahNum, isBismillahPlaying, isQueueLoading, currentProgress, isPaused }}
@@ -775,9 +874,53 @@ export const QuranReader = ({ route, navigation }: any) => {
         />
       )}
 
+      {/* ── Ayah Scrubber ── */}
+      {ayahs.length > 0 && (
+        <View
+          style={styles.scrubberTrack}
+          {...panResponder.panHandlers}
+          onLayout={(evt) => {
+            const { y, height } = evt.nativeEvent.layout;
+            // pageY is needed, not layout y — measure against screen
+          }}
+          ref={(ref) => {
+            if (ref) {
+              ref.measure((_x, _y, _w, h, _px, py) => {
+                scrubberTrackRef.current = { y: py, height: h };
+              });
+            }
+          }}
+        >
+          {/* Thin visible track line */}
+          <View style={styles.scrubberLine} />
+
+          {/* Draggable handle */}
+          <Animated.View
+            style={[
+              styles.scrubberHandle,
+              { transform: [{ translateY: scrubberY }] }
+            ]}
+          >
+            <View style={styles.scrubberDot} />
+          </Animated.View>
+
+          {/* Ayah number bubble — only visible while dragging */}
+          {scrubberVisible && (
+            <Animated.View
+              style={[
+                styles.scrubberBubble,
+                { transform: [{ translateY: scrubberY }] }
+              ]}
+            >
+              <Text style={styles.scrubberBubbleText}>{scrubberAyah}</Text>
+            </Animated.View>
+          )}
+        </View>
+      )}
+
       {/* ── Enhanced Bottom Audio Bar ── */}
       {(isAnythingPlaying) && (
-        <View style={[styles.audioBar, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.audioBar, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
           {/* Progress bar across top of audio bar */}
           <View style={styles.audioProgressBg}>
             <View style={[styles.audioProgressFill, { flex: currentProgress }]} />
@@ -937,4 +1080,55 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15,109,91,0.06)',
   },
   closeBtn: { flex: 0.5, alignItems: 'flex-end', justifyContent: 'center', height: 40, width: 40 },
+  scrubberTrack: {
+    position: 'absolute',
+    right: 0,
+    top: 100,
+    width: 36,
+    height: Dimensions.get('window').height * 0.65,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    zIndex: 20,
+  },
+  scrubberLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(15,109,91,0.12)',
+    borderRadius: 1,
+  },
+  scrubberHandle: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrubberDot: {
+    width: 4,
+    height: 36,
+    borderRadius: 2,
+    backgroundColor: 'rgba(15,109,91,0.45)',
+  },
+  scrubberBubble: {
+    position: 'absolute',
+    right: 30,
+    width: 44,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scrubberBubbleText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
 });

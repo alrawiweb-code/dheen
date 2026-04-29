@@ -40,6 +40,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
     profile, setProfile,
     adhanSettings, updateAdhanSettings, updatePrayerAdhanSettings,
     isAdhanPlaying,
+    darkMode,
   } = useAppStore();
 
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -72,11 +73,15 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
   const bottomInset = useScreenBottomInset(false);
 
+  const cardBg = darkMode ? 'rgba(255,255,255,0.05)' : '#f5f3ee';
+  const cardBgAlt = darkMode ? 'rgba(255,255,255,0.04)' : '#f0eee9';
+  const titleColor = darkMode ? '#fff' : Colors.textDark;
+
   return (
     <ScreenWrapper>
       {/* Header */}
       <View>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: darkMode ? 'transparent' : 'rgba(251,249,244,0.97)' }]}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => { stopAdhan(); navigation.goBack(); }}>
               <MaterialIcons name="arrow-back-ios" size={22} color={Colors.primary} />
@@ -115,17 +120,16 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
         )}
 
         {/* ── Master Toggle ── */}
-        <View style={styles.masterCard}>
-          <View style={styles.masterLeft}>
-            <View style={styles.masterIconBg}>
-              <MaterialIcons name="notifications-active" size={24} color={Colors.primary} />
-            </View>
-            <View>
-              <Text style={styles.masterTitle}>Enable Adhan Notifications</Text>
-              <Text style={styles.masterSub}>Receive alerts for all prayer times</Text>
-            </View>
+        <View style={[styles.masterCard, { backgroundColor: cardBg }]}>
+          <View style={styles.masterIconBg}>
+            <MaterialIcons name="notifications-active" size={24} color={Colors.primary} />
+          </View>
+          <View style={styles.masterTextBlock}>
+            <Text style={[styles.masterTitle, { color: titleColor }]}>Enable Adhan Notifications</Text>
+            <Text style={styles.masterSub}>Receive alerts for all prayer times</Text>
           </View>
           <Switch
+            style={{ flexShrink: 0 }}
             value={adhanSettings.masterEnabled}
             onValueChange={(val) => {
               // 1. Optimistic update to keep UI responsive
@@ -156,10 +160,10 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
         {/* ── Auto-Location ── */}
         <Text style={styles.sectionLabel}>PRAYER TIME LOCATION</Text>
-        <View style={styles.locationCard}>
+        <View style={[styles.locationCard, { backgroundColor: cardBg }]}>
           <View style={styles.locationRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.masterTitle}>Auto-Location</Text>
+              <Text style={[styles.masterTitle, { color: titleColor }]}>Auto-Location</Text>
               <Text style={styles.masterSub}>Use GPS for highly accurate prayer timing</Text>
             </View>
             <Switch
@@ -192,17 +196,17 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           {!profile.autoLocation && (
             <View style={styles.manualLocationBlock}>
               <TextInput
-                style={styles.locationInput}
+                style={[styles.locationInput, darkMode && styles.locationInputDark]}
                 placeholder="City (e.g. Dubai)"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={darkMode ? 'rgba(255,255,255,0.3)' : Colors.textMuted}
                 value={profile.city}
                 onChangeText={(city) => setProfile({ city })}
                 onBlur={resync}
               />
               <TextInput
-                style={styles.locationInput}
+                style={[styles.locationInput, darkMode && styles.locationInputDark]}
                 placeholder="Country (e.g. UAE)"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={darkMode ? 'rgba(255,255,255,0.3)' : Colors.textMuted}
                 value={profile.country}
                 onChangeText={(country) => setProfile({ country })}
                 onBlur={resync}
@@ -215,7 +219,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
         <Text style={styles.sectionLabel}>DAILY PRAYER CYCLE</Text>
         <View style={styles.prayerList}>
           {PRAYERS.map((prayer) => (
-            <View key={prayer.id} style={styles.prayerCard}>
+            <View key={prayer.id} style={[styles.prayerCard, { backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : '#fff' }]}>
               <View style={styles.prayerCardGlow} />
               <View style={styles.prayerRow}>
                 <View style={styles.prayerLeft}>
@@ -223,7 +227,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                     <MaterialIcons name={prayer.icon as any} size={22} color={prayer.color} />
                   </View>
                   <View>
-                    <Text style={styles.prayerName}>{prayer.id}</Text>
+                    <Text style={[styles.prayerName, { color: titleColor }]}>{prayer.id}</Text>
                     <Text style={[styles.prayerLabel, { color: prayer.color }]}>{prayer.label}</Text>
                   </View>
                 </View>
@@ -267,7 +271,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
             return (
               <TouchableOpacity
                 key={voice.id}
-                style={[styles.voiceCard, isSelected && styles.voiceCardSelected]}
+                style={[styles.voiceCard, { backgroundColor: cardBgAlt }, isSelected && styles.voiceCardSelected]}
                 onPress={() => {
                   updateAllPrayers({ voice: voice.id });
                 }}
@@ -279,7 +283,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                 <View style={styles.voiceAvatar}>
                   <LinearGradient colors={[voice.c1, voice.c2]} style={StyleSheet.absoluteFillObject} />
                 </View>
-                <Text style={styles.voiceName}>{voice.label}</Text>
+                <Text style={[styles.voiceName, { color: titleColor }]}>{voice.label}</Text>
                 <Text style={styles.voiceSub}>{voice.sub}</Text>
                 {downloadedVoices[voice.id] && (
                   <View style={{ marginTop: 6, backgroundColor: 'rgba(15, 109, 91, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
@@ -303,7 +307,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
             return (
               <TouchableOpacity
                 key={mode.id}
-                style={[styles.alertRow, isSelected && styles.alertRowSelected]}
+                style={[styles.alertRow, !isSelected && { backgroundColor: cardBgAlt }, isSelected && styles.alertRowSelected]}
                 onPress={() => {
                   updateAllPrayers({ alertType: mode.id });
                 }}
@@ -313,7 +317,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                 </View>
                 <MaterialIcons name={mode.icon} size={22} color={isSelected ? Colors.primary : Colors.textMuted} style={{ marginLeft: 16 }} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.alertLabel, isSelected && { color: Colors.primary }]}>{mode.label}</Text>
+                  <Text style={[styles.alertLabel, { color: titleColor }, isSelected && { color: Colors.primary }]}>{mode.label}</Text>
                   <Text style={styles.alertDesc}>{mode.desc}</Text>
                 </View>
               </TouchableOpacity>
@@ -323,7 +327,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
         {/* ── Preview Adhan Button ── */}
         <TouchableOpacity
-          style={styles.previewBtn}
+          style={[styles.previewBtn, { backgroundColor: darkMode ? 'rgba(15,109,91,0.12)' : 'rgba(0,83,68,0.05)' }]}
           onPress={async () => {
             if (isAdhanPlaying) {
               await stopAdhan();
@@ -357,9 +361,9 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
         {/* ── Pre-Alert ── */}
         <Text style={styles.sectionLabel}>PRE-ALERT REMINDER</Text>
-        <View style={[styles.masterCard, { marginBottom: Spacing['3xl'], flexDirection: 'column', alignItems: 'flex-start', gap: 14 }]}>
+        <View style={[styles.masterCard, { backgroundColor: cardBg, marginBottom: Spacing['3xl'], flexDirection: 'column', alignItems: 'flex-start', gap: 14 }]}>
           <View>
-            <Text style={styles.masterTitle}>Remind me before prayer</Text>
+            <Text style={[styles.masterTitle, { color: titleColor }]}>Remind me before prayer</Text>
             <Text style={styles.masterSub}>Get a heads-up before the adhan plays</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -372,7 +376,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                     paddingHorizontal: 20,
                     paddingVertical: 10,
                     borderRadius: 20,
-                    backgroundColor: isSelected ? Colors.primary : '#eae8e3',
+                    backgroundColor: isSelected ? Colors.primary : (darkMode ? 'rgba(255,255,255,0.08)' : '#eae8e3'),
                   }}
                   onPress={async () => {
                     updateAllPrayers({ preAlert: mins });
@@ -383,7 +387,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 13,
                     fontWeight: '700',
-                    color: isSelected ? '#fff' : Colors.textMuted,
+                    color: isSelected ? '#fff' : (darkMode ? 'rgba(255,255,255,0.6)' : Colors.textMuted),
                   }}>
                     {mins === 0 ? 'Off' : `${mins}m`}
                   </Text>
@@ -396,7 +400,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
       </ScrollView>
 
       {/* Save / Apply Button */}
-      <View style={[styles.saveContainer, { paddingBottom: bottomInset }]}>
+      <View style={[styles.saveContainer, { paddingBottom: bottomInset, backgroundColor: darkMode ? 'rgba(0,26,18,0.97)' : 'rgba(251,249,244,0.97)' }]}>
         <TouchableOpacity
           style={styles.saveBtn}
           activeOpacity={0.85}
@@ -450,11 +454,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: Spacing.lg, paddingRight: 16, borderRadius: 16, backgroundColor: '#f5f3ee',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginBottom: Spacing['2xl'],
-    gap: 12,
+    gap: 12, flexShrink: 0,
   },
-  masterLeft: { flexDirection: 'row', alignItems: 'center', gap: 16, flexShrink: 1 },
+  masterTextBlock: {
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 12,
+  },
   masterIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(0,83,68,0.1)', alignItems: 'center', justifyContent: 'center' },
-  masterTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: '700', color: Colors.textDark, marginBottom: 2 },
+  masterTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: '700', color: Colors.textDark, marginBottom: 2, flexShrink: 1 },
   masterSub: { fontFamily: 'Manrope', fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
 
   sectionLabel: {
@@ -474,6 +482,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#eae8e3',
     paddingHorizontal: 14, paddingVertical: 10,
     fontFamily: 'Plus Jakarta Sans', fontSize: 14, color: Colors.textDark,
+  },
+  locationInputDark: {
+    backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)',
+    color: '#fff',
   },
 
   // Prayer list
@@ -535,7 +547,6 @@ const styles = StyleSheet.create({
   saveContainer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     paddingHorizontal: Spacing.xl, paddingTop: 12,
-    backgroundColor: 'rgba(251,249,244,0.97)',
   },
   saveBtn: {
     height: 60, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center',

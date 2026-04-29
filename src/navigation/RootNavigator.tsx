@@ -9,6 +9,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { useAppStore } from '../store/useAppStore';
 
 // Import Screens (to be implemented/already implemented)
 import { SplashScreen } from '../screens/SplashScreen';
@@ -45,6 +46,7 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const insets = useSafeAreaInsets();
+  const darkMode = useAppStore(state => state.darkMode);
   // Full physical tab bar height: icon row + Android nav inset
   const tabBarHeight = TAB_BAR_HEIGHT + insets.bottom;
 
@@ -59,6 +61,8 @@ const MainTabs = () => {
             height: tabBarHeight,
             // Push icon content up so it sits in the visual 80px zone
             paddingBottom: insets.bottom,
+            backgroundColor: darkMode ? '#001a12' : '#FFFFFF',
+            shadowColor: darkMode ? 'transparent' : Colors.primary,
           },
         ],
         tabBarIcon: ({ focused, color, size }) => {
@@ -83,14 +87,14 @@ const MainTabs = () => {
           }
 
           return (
-            <View style={[styles.tabItem, focused && styles.tabItemFocused]}>
+            <View style={[styles.tabItem, focused && [styles.tabItemFocused, darkMode && { backgroundColor: 'rgba(161,242,219,0.1)' }]]}>
               <MaterialIcons name={iconName} size={24} color={color} />
               <Text style={[styles.tabLabel, { color }]}>{label}</Text>
             </View>
           );
         },
-        tabBarActiveTintColor: '#0F5132',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: darkMode ? '#a1f2db' : '#0F5132',
+        tabBarInactiveTintColor: darkMode ? '#4a6a5a' : '#9CA3AF',
       })}
     >
       <Tab.Screen name="HomeTab" component={HomeScreen} />
@@ -102,9 +106,8 @@ const MainTabs = () => {
   );
 };
 
-import { createNavigationContainerRef } from '@react-navigation/native';
-
-export const navigationRef = createNavigationContainerRef<any>();
+import { navigationRef } from './navigationRef';
+export { navigationRef };
 
 export const RootNavigator = () => {
   return (

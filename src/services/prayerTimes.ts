@@ -96,7 +96,9 @@ export async function getCalendarForMonth(
     console.warn(`[PrayerTimes] Network fetch failed for month ${month}.`, error);
     const latest = await AsyncStorage.getItem(`${PRAYER_CACHE_KEY}_latest_month`);
     if (latest) {
-      return { ...JSON.parse(latest), isOfflineFallback: true };
+      const parsed = JSON.parse(latest) as DailyPrayerData[];
+      (parsed as any).isOfflineFallback = true;
+      return parsed;
     }
     throw new Error('Offline and no fallback data');
   }

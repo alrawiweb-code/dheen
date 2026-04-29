@@ -49,6 +49,8 @@ export interface UserProfile {
 }
 
 export interface AppState {
+  darkMode: boolean;
+  setDarkMode: (enabled: boolean) => void;
   // User
   profile: UserProfile;
   setProfile: (profile: Partial<UserProfile>) => void;
@@ -139,6 +141,8 @@ const defaultAdhanSettings: AdhanSettings = {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
+  darkMode: false,
+  setDarkMode: (enabled: boolean) => set({ darkMode: enabled }),
   profile: {
     name: 'Friend',
     photoUri: null,
@@ -235,6 +239,7 @@ export const useAppStore = create<AppState>()(
         Maghrib: null,
         Isha: null,
       },
+      lastPrayerResetDate: new Date().toDateString(),
     }),
 
   lastPrayerResetDate: new Date().toDateString(),
@@ -296,7 +301,7 @@ export const useAppStore = create<AppState>()(
       sukoonEntries: [
         { ...entry, id: Date.now().toString() },
         ...state.sukoonEntries,
-      ],
+      ].slice(0, 200),
     })),
 
   milestones: {
@@ -349,6 +354,10 @@ export const useAppStore = create<AppState>()(
       name: 'dheen-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
       version: 7,
+      partialize: (state) => {
+        const { isAdhanPlaying, ...rest } = state;
+        return rest;
+      },
       migrate: (persistedState: any, _version: number) => {
         if (_version < 7) {
           return {

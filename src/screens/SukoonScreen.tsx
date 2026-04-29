@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  StatusBar,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -69,7 +70,8 @@ async function readReflections(): Promise<Reflection[]> {
 
 async function writeReflections(list: Reflection[]): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    const cappedList = list.slice(0, 200);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cappedList));
   } catch (e) {
     console.warn('[Sukoon] Failed to write reflections:', e);
   }
@@ -107,7 +109,7 @@ export const SukoonScreen = ({ navigation }: any) => {
 
   const [isRecording, setIsRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
-  
+
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   // ── Refs (avoid stale closures) ────────────────────────────────────────────
@@ -279,10 +281,10 @@ export const SukoonScreen = ({ navigation }: any) => {
         { uri: item.fileUri },
         { shouldPlay: true }
       );
-      
+
       // Prevent race condition: if another play was triggered while this was loading, abort.
       if (currentToken !== playbackTokenRef.current) {
-        sound.unloadAsync().catch(() => {});
+        sound.unloadAsync().catch(() => { });
         return;
       }
 
@@ -408,8 +410,8 @@ export const SukoonScreen = ({ navigation }: any) => {
         {/* Prompt Card */}
         <View style={styles.promptCard}>
           <View style={styles.promptHeader}>
-            <MaterialIcons name="history-edu" size={16} color={Colors.secondary} />
-            <Text style={styles.promptLabel}>DAILY PROMPT</Text>
+            {/* <MaterialIcons name="history-edu" size={16} color={Colors.secondary} /> */}
+            <Text style={styles.promptLabel}>Reflection for the Day</Text>
           </View>
           <Text style={styles.promptQuestion}>{TODAY_PROMPT}</Text>
 
@@ -550,7 +552,7 @@ export const SukoonScreen = ({ navigation }: any) => {
                       <MaterialIcons name="delete-outline" size={24} color="rgba(186,26,26,0.75)" />
                     </TouchableOpacity>
                   </View>
-);
+                );
               })}
             </View>
           )}
@@ -558,7 +560,7 @@ export const SukoonScreen = ({ navigation }: any) => {
 
       </ScrollView>
     </ScreenWrapper>
-);
+  );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -572,7 +574,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(245,240,232,0.92)',
+    backgroundColor: 'transparent',
     zIndex: 100,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },

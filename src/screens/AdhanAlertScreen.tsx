@@ -16,7 +16,7 @@ import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../store/useAppStore';
 import { HapticButton } from '../components/HapticButton';
-import { playAdhan, stopAdhan } from '../services/adhanManager';
+import { playFullAdhan, stopAdhan } from '../services/adhanManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -67,7 +67,14 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
 
   useEffect(() => {
     // Play Adhan
-    playAdhan(adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah');
+    const phraseEnabled =
+      prayer === 'Fajr' &&
+      (adhanSettings.prayers.Fajr.fajrPhrase ?? true);
+
+    playFullAdhan(
+      adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah',
+      phraseEnabled
+    );
 
     // Fire haptics
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -106,6 +113,10 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
     animateWave(wave3, 0.5, 1, 300);
     animateWave(wave4, 0.2, 0.8, 450);
     animateWave(wave5, 0.4, 1, 380);
+
+    return () => {
+      stopAdhan();
+    };
   }, []);
 
   const handlePrayed = async () => {
@@ -126,7 +137,7 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
       content: {
         title: `${prayer} Prayer Reminder`,
         body: `Your snoozed ${prayer} prayer reminder`,
-        data: { intent: 'play_adhan', prayer, voiceKey: adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah', alertType: 'beep' },
+        data: { intent: 'play_adhan', prayer, voiceKey: adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah', alertType: adhanSettings.prayers[prayer as PrayerKey]?.alertType || 'beep' },
       },
       trigger: { seconds: 300 } as any, // 5 minutes
     });

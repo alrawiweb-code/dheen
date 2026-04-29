@@ -108,10 +108,15 @@ export async function fetchSurah(
     transTexts = localTrans;
   } else {
     // 2. Fallback to network fetch for the selected edition
-    const engRes = await fetchWithTimeout(`${QURAN_BASE}/surah/${surahNumber}/${targetEdition}`);
-    const engJson = await engRes.json();
-    const engAyahs: any[] = engJson.data.ayahs;
-    transTexts = engAyahs.map(a => a.text);
+    try {
+      const engRes = await fetchWithTimeout(`${QURAN_BASE}/surah/${surahNumber}/${targetEdition}`);
+      const engJson = await engRes.json();
+      const engAyahs: any[] = engJson.data.ayahs;
+      transTexts = engAyahs.map((a: any) => a.text);
+    } catch (e) {
+      console.warn(`[QuranAPI] Translation fetch failed, continuing without`, e);
+      transTexts = [];
+    }
   }
 
   const ayahs: Ayah[] = arabicAyahs.map((a: any, i: number) => ({

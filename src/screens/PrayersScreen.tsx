@@ -33,6 +33,7 @@ export const PrayersScreen = () => {
   const profile = useAppStore(state => state.profile);
   const prayerStatuses = useAppStore(state => state.prayerStatuses);
   const setPrayerStatus = useAppStore(state => state.setPrayerStatus);
+  const darkMode = useAppStore(state => state.darkMode);
   const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
   const [hijri, setHijri] = useState(FALLBACK_HIJRI);
   const [loading, setLoading] = useState(true);
@@ -83,7 +84,7 @@ export const PrayersScreen = () => {
     <ScreenWrapper>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]} showsVerticalScrollIndicator={false}>
         {/* Top Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: darkMode ? 'transparent' : 'rgba(251,249,244,0.97)' }]}>
           <View style={styles.headerLeft}>
             <Text style={styles.dateText}>{profile?.name || 'Friend'}</Text>
           </View>

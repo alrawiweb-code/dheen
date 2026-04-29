@@ -100,21 +100,7 @@ export default function App() {
   }, []);
 
   // ── Daily prayer reset ────────────────────────────────────────
-  useEffect(() => {
-    const checkDailyReset = async () => {
-      try {
-        const today = new Date().toDateString();
-        const lastReset = await AsyncStorage.getItem('lastPrayerResetDate');
-        if (lastReset !== today) {
-          useAppStore.getState().resetDailyPrayers();
-          await AsyncStorage.setItem('lastPrayerResetDate', today);
-        }
-      } catch (e) {
-        console.warn('[DailyReset] Failed:', e);
-      }
-    };
-    checkDailyReset();
-  }, []);
+  // (Handled internally by Zustand persistence and HomeScreen)
 
   // ── Render: waiting for fonts ─────────────────────────────────
   if (!fontsReady) {

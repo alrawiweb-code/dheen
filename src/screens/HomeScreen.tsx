@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import { DarkColors, LightColors } from '../theme/darkMode';
 import * as Haptics from 'expo-haptics';
 import { Colors, Typography, Spacing, BorderRadius, Shadows, PrayerGradients, PrayerIcons, NiyyahPresets } from '../theme';
 import { DAILY_AYAHS } from '../services/quranApi';
@@ -41,6 +42,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const lastPrayerResetDate = useAppStore(state => state.lastPrayerResetDate);
   const resetDailyPrayers = useAppStore(state => state.resetDailyPrayers);
   const resetNiyyahIfNewDay = useAppStore(state => state.resetNiyyahIfNewDay);
+  const darkMode = useAppStore(state => state.darkMode);
+  const theme = darkMode ? DarkColors : LightColors;
   const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
   const [hijri, setHijri] = useState(FALLBACK_HIJRI);
   const [moodPromptPrayer, setMoodPromptPrayer] = useState<string | null>(null);
@@ -52,7 +55,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const headerFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(30)).current;
 
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  
   const hour = now.getHours();
   const greetingIcon = hour < 12 ? 'wb-twilight' : hour < 18 ? 'wb-sunny' : 'nightlight-round';
   const greeting = profile?.name ? `السلام عليكم، ${profile.name}` : 'السلام عليكم';
@@ -103,10 +107,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const nextTimeStr = nextPrayer?.nextTime;
   
   useEffect(() => {
-    // Ticker for next prayer
+    // Ticker for next prayer and current time
     const updateTick = () => {
+      setNow(new Date());
       if (nextTimeStr) {
-        setCountdownStr(`${getTimeUntil(nextTimeStr)} away`);
+        setCountdownStr(getTimeUntil(nextTimeStr));
       }
     };
     updateTick();
@@ -177,7 +182,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       contentContainerStyle={styles.content}
       fixedContent={
         <>
-          <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+          <StatusBar barStyle={theme.statusBar} translucent backgroundColor="transparent" />
           {/* All Done Banner */}
           {showAllDone && (
             <Animated.View style={styles.allDoneBanner}>
@@ -241,8 +246,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Animated.View style={[styles.header, { opacity: headerFade }]}>
           <View style={styles.profileRow}>
             <View style={styles.nameBlock}>
-              <Text style={styles.greetingText} numberOfLines={1}>{greeting} <MaterialIcons name={greetingIcon as any} size={16} color="#1F3D2B" /></Text>
-              <Text style={styles.timeText}>{timeStr}</Text>
+              <Text style={[styles.greetingText, { color: theme.textPrimary }]} numberOfLines={1}>{greeting} <MaterialIcons name={greetingIcon as any} size={16} color="#1F3D2B" /></Text>
+              <Text style={[styles.timeText, { color: theme.textMuted }]}>{timeStr}</Text>
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -259,7 +264,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <TouchableOpacity 
           activeOpacity={0.7} 
           onPress={() => navigation.navigate('SetNiyyah')} 
-          style={styles.intentionCard}
+          style={[styles.intentionCard, {
+            backgroundColor: theme.cardBg,
+            borderColor: darkMode ? 'rgba(154,236,213,0.15)' : Colors.accent,
+          }]}
         >
           <View style={styles.intentionIconBox}>
             <MaterialIcons name="auto-awesome" size={20} color="#C9A23F" />
@@ -267,13 +275,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <View style={styles.intentionTextContainer}>
             {todayNiyyah ? (
               <>
-                <Text style={styles.intentionTitle}>Your intention today:</Text>
-                <Text style={styles.intentionSubtitle} numberOfLines={1}>"{todayNiyyah}"</Text>
+                <Text style={[styles.intentionTitle, { color: theme.textPrimary }]}>Your intention today:</Text>
+                <Text style={[styles.intentionSubtitle, { color: theme.textMuted }]} numberOfLines={1}>"{todayNiyyah}"</Text>
               </>
             ) : (
               <>
-                <Text style={styles.intentionTitle}>Set your intention for today</Text>
-                <Text style={styles.intentionSubtitle}>Align your actions with purpose</Text>
+                <Text style={[styles.intentionTitle, { color: theme.textPrimary }]}>Set your intention for today</Text>
+                <Text style={[styles.intentionSubtitle, { color: theme.textMuted }]}>Align your actions with purpose</Text>
               </>
             )}
           </View>
@@ -314,29 +322,51 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             { icon: 'explore', label: 'Qibla', screen: 'Qibla' },
             { icon: 'self-improvement', label: 'Dhikr', screen: 'Dhikr' },
             { icon: 'spa', label: 'Sukoon', screen: 'Sukoon' },
-          ].map((a) => (
-            <HapticButton
-              key={a.label}
-              onPress={() => {
-                if (a.params) {
-                  navigation.navigate(a.screen as any, a.params);
-                } else {
-                  navigation.navigate(a.screen as any);
-                }
-              }}
-              style={styles.quickActionItem}
-            >
-              <View style={styles.quickActionInner}>
-                <MaterialIcons name={a.icon as any} size={26} color="#fff" style={{ marginBottom: 2 }} />
-                <Text style={styles.quickActionLabel} numberOfLines={1} adjustsFontSizeToFit>{a.label}</Text>
-              </View>
-            </HapticButton>
-          ))}
+          ].map((a) => {
+            const btnSize = (width - 32 - 32) / 5; // total width - screen padding - gaps
+            return (
+              <HapticButton
+                key={a.label}
+                onPress={() => {
+                  if (a.params) {
+                    navigation.navigate(a.screen as any, a.params);
+                  } else {
+                    navigation.navigate(a.screen as any);
+                  }
+                }}
+                style={{ width: btnSize }}
+              >
+                <View style={{
+                  width: btnSize,
+                  height: btnSize,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(10, 53, 40, 0.88)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(154, 236, 213, 0.15)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}>
+                  <MaterialIcons name={a.icon as any} size={22} color="#9aecd5" />
+                  <Text style={{
+                    fontSize: 9.5,
+                    color: 'rgba(255,255,255,0.82)',
+                    fontWeight: '600',
+                    fontFamily: 'Manrope',
+                    letterSpacing: 0.2,
+                    textAlign: 'center',
+                  }} numberOfLines={1}>
+                    {a.label}
+                  </Text>
+                </View>
+              </HapticButton>
+            );
+          })}
         </View>
 
         {/* Habit Tracker */}
-        <View style={styles.habitCard}>
-          <Text style={styles.sectionTitle}>Today's Salah</Text>
+        <View style={[styles.habitCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+          <Text style={[styles.sectionTitle, { color: theme.sectionTitle }]}>Today's Salah</Text>
           <View style={styles.habitRow}>
             {PRAYERS.map((p) => {
               const status = prayerStatuses[p];
@@ -380,14 +410,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                       />
                     )}
                   </View>
-                  <Text style={[styles.habitLabel, isLocked && { color: '#C0C0C0' }]}>
+                  <Text style={[styles.habitLabel, { color: theme.textMuted }, isLocked && { color: '#C0C0C0' }]}>
                     {p.substring(0, 3)}
                   </Text>
                 </HapticButton>
               );
             })}
           </View>
-          <Text style={styles.motivationText}>
+          <Text style={[styles.motivationText, { color: theme.textMuted }]}>
             {donePrayers === 0
               ? 'Begin your day with Fajr.'
               : donePrayers < 3
@@ -410,15 +440,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </HapticButton>
 
         {/* Daily Ayah */}
-        <View style={styles.ayahCard}>
-          <Text style={styles.ayahArabic}>{dailyAyah.arabic}</Text>
-          <Text style={styles.ayahTranslation}>{dailyAyah.translation}</Text>
+        <View style={[styles.ayahCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+          <Text style={[styles.ayahArabic, { color: darkMode ? '#9aecd5' : '#0F5132' }]}>{dailyAyah.arabic}</Text>
+          <Text style={[styles.ayahTranslation, { color: theme.textSecondary }]}>{dailyAyah.translation}</Text>
           <Text style={styles.ayahReference}>{dailyAyah.reference}</Text>
         </View>
 
         {/* Prayer Times List */}
-        <View style={styles.prayerListCard}>
-          <Text style={styles.sectionTitle}>Prayer Times</Text>
+        <View style={[styles.prayerListCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+          <Text style={[styles.sectionTitle, { color: theme.sectionTitle }]}>Prayer Times</Text>
           {PRAYERS.map((p) => {
             const timeKey = p as keyof typeof prayerTimes;
             const time = prayerTimes[timeKey] as string;
@@ -433,8 +463,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 ]}
               >
                 <MaterialIcons name={PrayerIcons[p.toLowerCase() as keyof typeof PrayerIcons] as any} size={16} color={isNext ? '#0F5132' : '#6B7280'} />
-                <Text style={[styles.prayerRowName, isNext && { color: '#0F5132', fontWeight: Typography.weights.bold }]}>{p}</Text>
-                <Text style={[styles.prayerRowTime, isNext && { color: '#C9A23F' }]}>{formatTime(time)}</Text>
+                <Text style={[styles.prayerRowName, { color: theme.textSecondary }, isNext && { color: '#0F5132', fontWeight: Typography.weights.bold }]}>{p}</Text>
+                <Text style={[styles.prayerRowTime, { color: theme.textMuted }, isNext && { color: '#C9A23F' }]}>{formatTime(time)}</Text>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('AdhanSettings')}
                   style={styles.bellBtn}
@@ -509,26 +539,22 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eae8e3', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 18, color: '#1F3D2B', fontWeight: Typography.weights.bold },
   nameBlock: { flex: 1 },
-  greetingText: { fontSize: Typography.sizes.md, color: '#1F3D2B', fontWeight: Typography.weights.semibold },
-  timeText: { fontSize: Typography.sizes.sm, color: '#6B7280', marginTop: 2 },
+  greetingText: { fontSize: Typography.sizes.md, color: Colors.textDark, fontWeight: Typography.weights.semibold },
+  timeText: { fontSize: Typography.sizes.sm, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
   headerRight: { alignItems: 'flex-end', gap: 4 },
   headerLogo: { width: 28, height: 28, borderRadius: 7 },
 
   intentionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FBF8F2',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     padding: 16,
     marginBottom: 12,
     borderRadius: 24,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: 'rgba(154,236,213,0.15)',
     borderLeftWidth: 4,
     borderLeftColor: Colors.accent,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
   },
   intentionIconBox: {
     width: 44,
@@ -545,14 +571,14 @@ const styles = StyleSheet.create({
   },
   intentionTitle: {
     fontSize: 14,
-    color: '#1F3D2B',
+    color: '#fff',
     fontWeight: '700',
     fontFamily: 'Plus Jakarta Sans',
     marginBottom: 4,
   },
   intentionSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: 'rgba(255,255,255,0.55)',
     fontWeight: '500',
     fontFamily: 'Manrope',
   },
@@ -592,38 +618,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    gap: 6,
+    gap: 8,
     marginBottom: Spacing.sm,
+    paddingHorizontal: 0,
   },
-  quickActionItem: { 
-    flex: 1, 
-    borderRadius: BorderRadius.lg, 
-    overflow: 'hidden' 
-  },
-  quickActionInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
-    borderWidth: 0,
-  },
-  quickActionIcon: { fontSize: 26, marginBottom: 2 },
-  quickActionLabel: { fontSize: 10, color: '#fff', fontWeight: Typography.weights.bold },
+
 
   habitCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 24,
     padding: 20,
     marginBottom: 12,
-    borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(154,236,213,0.12)',
   },
-  sectionTitle: { fontSize: 16, color: Colors.primary, fontWeight: '800', marginBottom: Spacing.md },
+  sectionTitle: { fontSize: 16, color: '#9aecd5', fontWeight: '800', marginBottom: Spacing.md },
   habitRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
   habitItem: { alignItems: 'center', gap: 6 },
   habitCircle: {
@@ -636,25 +645,25 @@ const styles = StyleSheet.create({
   },
   habitCheck: { fontSize: 20, color: '#fff', fontWeight: Typography.weights.bold },
   habitIcon: { fontSize: 20 },
-  habitLabel: { fontSize: 10, color: '#6B7280', fontWeight: Typography.weights.medium },
-  motivationText: { fontSize: Typography.sizes.sm, color: '#6B7280', textAlign: 'center', marginTop: 4 },
+  habitLabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: Typography.weights.medium },
+  motivationText: { fontSize: Typography.sizes.sm, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 4 },
 
   oneMinuteBtn: { marginBottom: Spacing.sm, borderRadius: BorderRadius.full, overflow: 'hidden' },
   oneMinuteGradient: { paddingVertical: 12, alignItems: 'center', borderRadius: BorderRadius.full },
   oneMinuteText: { fontSize: Typography.sizes.md, color: '#fff', fontWeight: Typography.weights.bold, letterSpacing: 0.5 },
 
   ayahCard: {
-    backgroundColor: 'rgba(15,109,91,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 24,
     padding: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(15,109,91,0.1)',
+    borderColor: 'rgba(154,236,213,0.12)',
     alignItems: 'flex-end',
   },
   ayahArabic: {
     fontSize: 20,
-    color: '#0F5132',
+    color: '#9aecd5',
     textAlign: 'right',
     lineHeight: 36,
     marginBottom: Spacing.sm,
@@ -662,7 +671,7 @@ const styles = StyleSheet.create({
   },
   ayahTranslation: {
     fontSize: Typography.sizes.md,
-    color: '#374151',
+    color: 'rgba(255,255,255,0.75)',
     textAlign: 'left',
     alignSelf: 'stretch',
     lineHeight: 22,
@@ -671,16 +680,12 @@ const styles = StyleSheet.create({
   ayahReference: { fontSize: Typography.sizes.xs, color: '#E6C068', alignSelf: 'flex-start' },
 
   prayerListCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 24,
     padding: 20,
     marginBottom: 12,
-    borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(154,236,213,0.12)',
   },
   prayerRow: {
     flexDirection: 'row',
@@ -696,8 +701,8 @@ const styles = StyleSheet.create({
     borderLeftColor: '#0F5132',
   },
   prayerRowIcon: { fontSize: 16 },
-  prayerRowName: { flex: 1, fontSize: Typography.sizes.md, color: '#1F3D2B', fontWeight: Typography.weights.medium },
-  prayerRowTime: { fontSize: Typography.sizes.md, color: '#6B7280' },
+  prayerRowName: { flex: 1, fontSize: Typography.sizes.md, color: 'rgba(255,255,255,0.85)', fontWeight: Typography.weights.medium },
+  prayerRowTime: { fontSize: Typography.sizes.md, color: 'rgba(255,255,255,0.5)' },
   bellBtn: { padding: 4 },
 
   allDoneBanner: {

@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet, ViewStyle } from 'react-native';
+import { View, ScrollView, StyleSheet, ViewStyle, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppStore } from '../store/useAppStore';
+import { DarkColors, LightColors } from '../theme/darkMode';
 
 import { TAB_BAR_HEIGHT, SCREEN_H_PADDING } from '../constants/layout';
 
@@ -59,6 +61,8 @@ export function ScreenWrapper({
   fixedContent,
 }: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
+  const darkMode = useAppStore(state => state.darkMode);
+  const theme = darkMode ? DarkColors : LightColors;
 
   const hPad = noHorizontalPadding ? 0 : SCREEN_H_PADDING;
   const paddingTop = insets.top;
@@ -66,8 +70,16 @@ export function ScreenWrapper({
     ? TAB_BAR_HEIGHT + insets.bottom + BOTTOM_EXTRA
     : insets.bottom + BOTTOM_EXTRA;
 
+  // Ensure Android status bar is always transparent with no background rectangle
+  React.useEffect(() => {
+    if (Platform.OS === 'android') {
+      StatusBar.setBackgroundColor('transparent');
+      StatusBar.setTranslucent(true);
+    }
+  }, []);
+
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, { backgroundColor: theme.background }, style]}>
       {fixedContent}
 
       {scrollable ? (

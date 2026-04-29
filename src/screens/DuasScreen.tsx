@@ -19,6 +19,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
 import { Colors, Typography, NativeSpacing as Spacing, BorderRadius, Shadows } from '../theme';
+import { DarkColors, LightColors } from '../theme/darkMode';
 import { useAppStore } from '../store/useAppStore';
 import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper';
 
@@ -827,7 +828,8 @@ async function savePersonalDuas(duas: PersonalDua[]): Promise<void> {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const DuasScreen = ({ navigation }: any) => {
-  const { profile } = useAppStore();
+  const { profile, darkMode } = useAppStore();
+  const theme = darkMode ? DarkColors : LightColors;
 
   // Curated list state
   const [activeCategory, setActiveCategory] = useState('Morning');
@@ -963,7 +965,7 @@ export const DuasScreen = ({ navigation }: any) => {
   return (
     <ScreenWrapper>
       {/* ── Top Header ─────────────────────────────────────────────────── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: darkMode ? 'transparent' : 'rgba(251,249,244,0.97)' }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.dateText}>{profile?.name || 'Friend'}</Text>
         </View>
@@ -982,14 +984,31 @@ export const DuasScreen = ({ navigation }: any) => {
         </View>
 
         {/* ── Search Bar ──────────────────────────────────────────────── */}
-        <View style={styles.searchBar}>
-          <MaterialIcons name="search" size={20} color={Colors.textMuted} style={{ marginRight: 8 }} />
+        <View style={[styles.searchBar, darkMode ? {
+          backgroundColor: 'rgba(255,255,255,0.08)',
+          borderColor: 'rgba(154,236,213,0.25)',
+          borderWidth: 1,
+          shadowColor: 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0,
+          shadowRadius: 0,
+          elevation: 0,
+        } : {
+          backgroundColor: 'rgba(15,109,91,0.06)',
+          borderColor: 'rgba(15,109,91,0.1)',
+          borderWidth: 1,
+        }]}>
+          <MaterialIcons name="search" size={20} color={darkMode ? 'rgba(154,236,213,0.6)' : Colors.textMuted} style={{ marginRight: 8 }} />
           <TextInput
             placeholder="Search duas..."
             placeholderTextColor={Colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={styles.searchInput}
+            underlineColorAndroid="transparent"
+            style={[styles.searchInput, {
+              color: theme.textPrimary,
+              backgroundColor: 'transparent',
+            }]}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -1222,11 +1241,19 @@ const styles = StyleSheet.create({
   // ── Search ────────────────────────────────────────────────────────────────
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(15,109,91,0.06)', borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16,
-    borderWidth: 1, borderColor: 'rgba(15,109,91,0.1)',
+    borderRadius: 16,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textDark, fontFamily: 'Manrope' },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textDark,
+    fontFamily: 'Manrope',
+    backgroundColor: 'transparent',
+    padding: 0,
+    borderWidth: 0,
+    outlineWidth: 0,
+  },
 
   // ── Categories ────────────────────────────────────────────────────────────
   categoriesSection: { marginHorizontal: -Spacing.xl, marginBottom: Spacing.lg },

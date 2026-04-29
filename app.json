@@ -2,7 +2,7 @@
   "expo": {
     "name": "Deen Islam",
     "slug": "dheen-app",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -29,7 +29,7 @@
         "backgroundColor": "#0A3D2B"
       },
       "package": "com.alrawi.muslimpro",
-      "versionCode": 3,
+      "versionCode": 4,
       "blockedPermissions": [
         "android.permission.ACTIVITY_RECOGNITION"
       ],

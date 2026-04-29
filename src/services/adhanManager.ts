@@ -10,13 +10,13 @@ export const ADHAN_SOURCES: Record<string, string> = {
   alaqsa: 'https://islamcan.com/audio/adhan/azan3.mp3',
 };
 
+// ── Bundled Fajr audio with "As-salatu khayrun mina-n-nawm" phrase ──
+const FAJR_WITH_PHRASE_ASSET = require('../../assets/adhan/fajr_bank.mp3');
+
 // Global audio tracking reference
 let globalAdhanSound: Audio.Sound | null = null;
 let shortAdhanTimeoutMap: NodeJS.Timeout | null = null;
 
-/**
- * Ensures any previously playing Adhan is stopped and memory is freed.
- */
 export const stopAdhan = async () => {
   if (globalAdhanSound) {
     try {
@@ -37,74 +37,29 @@ export const stopAdhan = async () => {
     shortAdhanTimeoutMap = null;
   }
   
-  // Safely untoggle the state
   if (useAppStore.getState().isAdhanPlaying) {
     useAppStore.getState().setAdhanPlaying(false);
   }
 };
 
-/**
- * Primary Global Adhan Execution Trigger.
- * Forces an override of any currently playing Audio across the app.
- */
-export const playAdhan = async (voiceKey: string): Promise<void> => {
-  console.log(`[AdhanManager] Preparing to play Adhan using voice config: ${voiceKey}`);
 
-  try {
-    const remoteUrl = ADHAN_SOURCES[voiceKey] || ADHAN_SOURCES['makkah'];
-    const audioUri = await resolveAudioUri(voiceKey, remoteUrl);
 
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      interruptionModeAndroid: 1,
-      interruptionModeIOS: 1,
-      shouldDuckAndroid: true,
-      playThroughEarpieceAndroid: false,
-    });
-
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: audioUri },
-      { shouldPlay: true },
-      (status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          console.log('[AdhanManager] Playback naturally finished.');
-          stopAdhan();
-        }
-      }
-    );
-
-    globalAdhanSound = sound;
-  } catch (error) {
-    console.error('[AdhanManager] Failed to load/play Adhan stream', error);
-    useAppStore.getState().setAdhanPlaying(false);
-  }
-};
-
-/**
- * Eagerly download all Adhan voices in the background so they are
- * available instantly for preview/playback on first tap.
- */
 export const preloadAdhanAudio = (): void => {
   Object.entries(ADHAN_SOURCES).forEach(([key, url]) => {
     downloadAndCache(key, url).catch(() => {});
   });
 };
 
-// Duplicate trigger guard — tracks the last prayer we triggered to prevent
-// double-firing if both foreground and background listeners fire simultaneously.
 let lastTriggeredPrayer: string | null = null;
 let lastTriggeredAt: number = 0;
 
-/**
- * Central Adhan Execution Engine.
- * Called when a notification fires (foreground OR background tap).
- * Reads the current store state to determine WHAT to do and HOW.
- */
-export const handleAdhanTrigger = async (prayerName: string, voiceKey: string, alertType: string): Promise<void> => {
+export const handleAdhanTrigger = async (
+  prayerName: string,
+  voiceKey: string,
+  alertType: string
+): Promise<void> => {
   const now = Date.now();
   
-  // Prevent duplicate triggers within a 30-second window
   if (lastTriggeredPrayer === prayerName && (now - lastTriggeredAt) < 30_000) {
     console.log(`[AdhanManager] Duplicate trigger blocked for ${prayerName}`);
     return;
@@ -113,13 +68,11 @@ export const handleAdhanTrigger = async (prayerName: string, voiceKey: string, a
   const store = useAppStore.getState();
   const { adhanSettings } = store;
   
-  // Guard 1: Global master toggle
   if (!adhanSettings.masterEnabled) {
     console.log('[AdhanManager] Master disabled — skipping trigger.');
     return;
   }
   
-  // Guard 2: Per-prayer enable flag
   const prayerKey = prayerName as keyof typeof adhanSettings.prayers;
   const prayerConfig = adhanSettings.prayers[prayerKey];
   if (!prayerConfig || !prayerConfig.enabled) {
@@ -127,25 +80,30 @@ export const handleAdhanTrigger = async (prayerName: string, voiceKey: string, a
     return;
   }
   
-  // Use stored settings as truth, fall back to notification payload values
   const resolvedVoice = prayerConfig.voice || voiceKey || 'makkah';
-  const resolvedMode = prayerConfig.alertType || alertType || 'adhan';
+  const resolvedMode  = prayerConfig.alertType || alertType || 'adhan';
   
-  // Mark this as the last triggered prayer
   lastTriggeredPrayer = prayerName;
   lastTriggeredAt = now;
   
-  console.log(`[AdhanManager] Triggering ${prayerName} | voice=${resolvedVoice} | mode=${resolvedMode}`);
+  // ── Fajr phrase override ──
+  const useFajrWithPhrase =
+    prayerName === 'Fajr' &&
+    resolvedMode === 'adhan' &&
+    (adhanSettings.prayers.Fajr.fajrPhrase ?? true);
+
+  console.log(
+    `[AdhanManager] Triggering ${prayerName} | voice=${resolvedVoice} | mode=${resolvedMode} | fajrPhrase=${useFajrWithPhrase}`
+  );
   
   if (resolvedMode === 'adhan') {
-    await playFullAdhan(resolvedVoice);
+    await playFullAdhan(resolvedVoice, useFajrWithPhrase);
   } else if (resolvedMode === 'beep') {
     await playShortAdhan(resolvedVoice);
   } else if (resolvedMode === 'silent_vibrate') {
     vibrateAdhan();
   }
 };
-
 
 export const playAdhanPreview = async (
   voiceKey: string,
@@ -158,12 +116,8 @@ export const playAdhanPreview = async (
 
   try {
     const remoteUrl = ADHAN_SOURCES[voiceKey] || ADHAN_SOURCES['makkah'];
-
-    // Only show loading spinner if we need to fetch from network
     const alreadyCached = await isCached(voiceKey);
     if (!alreadyCached) onLoadingStatusChange?.(true);
-
-    // Cache-first: play local if available, trigger background download otherwise
     const audioUri = await resolveAudioUri(voiceKey, remoteUrl);
 
     await Audio.setAudioModeAsync({
@@ -186,11 +140,8 @@ export const playAdhanPreview = async (
     );
 
     globalAdhanSound = sound;
-
-    // Hide spinner — audio is now loaded and playing
     onLoadingStatusChange?.(false);
 
-    // Auto-stop after 10 seconds explicitly managed by our global timeout reference
     shortAdhanTimeoutMap = setTimeout(async () => {
       if (globalAdhanSound === sound) {
         await stopAdhan();
@@ -204,18 +155,31 @@ export const playAdhanPreview = async (
 };
 
 /**
- * Plays the full Adhan audio until it naturally finishes.
- * Used for the "Full Adhan" alert mode.
+ * Plays the full Adhan.
+ * If useFajrWithPhrase is true, plays the bundled fajr_bank.mp3
+ * which includes "As-salatu khayrun mina-n-nawm" — overrides voice selection.
+ * Otherwise plays the user's selected voice from remote/cache.
  */
-export const playFullAdhan = async (voiceKey: string): Promise<void> => {
-  console.log(`[AdhanManager] Playing full Adhan: ${voiceKey}`);
+export const playFullAdhan = async (
+  voiceKey: string,
+  useFajrWithPhrase: boolean = false
+): Promise<void> => {
+  console.log(`[AdhanManager] Playing full Adhan: ${voiceKey} | fajrWithPhrase=${useFajrWithPhrase}`);
   
   await stopAdhan();
   useAppStore.getState().setAdhanPlaying(true);
 
   try {
-    const remoteUrl = ADHAN_SOURCES[voiceKey] || ADHAN_SOURCES['makkah'];
-    const audioUri = await resolveAudioUri(voiceKey, remoteUrl);
+    // ── Swap audio source based on Fajr phrase toggle ──
+    let audioSource: any;
+    if (useFajrWithPhrase) {
+      audioSource = FAJR_WITH_PHRASE_ASSET;
+      console.log('[AdhanManager] Using bundled fajr_bank.mp3 (phrase enabled)');
+    } else {
+      const remoteUrl = ADHAN_SOURCES[voiceKey] || ADHAN_SOURCES['makkah'];
+      const audioUri = await resolveAudioUri(voiceKey, remoteUrl);
+      audioSource = { uri: audioUri };
+    }
 
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
@@ -227,7 +191,7 @@ export const playFullAdhan = async (voiceKey: string): Promise<void> => {
     });
 
     const { sound } = await Audio.Sound.createAsync(
-      { uri: audioUri },
+      audioSource,
       { shouldPlay: true },
       (status) => {
         if (status.isLoaded && status.didJustFinish) {
@@ -243,10 +207,6 @@ export const playFullAdhan = async (voiceKey: string): Promise<void> => {
   }
 };
 
-/**
- * Plays a short clip (first ~8 seconds) of the Adhan.
- * Used for the "Short Notification" alert mode.
- */
 export const playShortAdhan = async (voiceKey: string): Promise<void> => {
   console.log(`[AdhanManager] Playing short Adhan clip: ${voiceKey}`);
   
@@ -277,8 +237,6 @@ export const playShortAdhan = async (voiceKey: string): Promise<void> => {
     );
     globalAdhanSound = sound;
 
-    // Auto-stop after 8 seconds exclusively mapping the singleton to avoid
-    // previously aborted playbacks cancelling newly triggered ones.
     shortAdhanTimeoutMap = setTimeout(async () => {
       if (globalAdhanSound === sound) {
         await stopAdhan();
@@ -290,10 +248,6 @@ export const playShortAdhan = async (voiceKey: string): Promise<void> => {
   }
 };
 
-/**
- * Triggers device vibration for the "Vibrate Only" alert mode.
- */
 export const vibrateAdhan = (): void => {
-  // Three-pulse vibration pattern mimicking a notification
   Vibration.vibrate([0, 500, 200, 500, 200, 500]);
 };

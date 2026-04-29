@@ -10,6 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Switch,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -37,8 +40,13 @@ const BASE_MOODS = [
 ];
 
 export const ProfileScreen = ({ navigation }: any) => {
-  const { profile, milestones, prayerMoods, todayNiyyah } = useAppStore();
+  const profile = useAppStore(state => state.profile);
+  const milestones = useAppStore(state => state.milestones);
+  const prayerMoods = useAppStore(state => state.prayerMoods);
+  const todayNiyyah = useAppStore(state => state.todayNiyyah);
   const setProfile = useAppStore(state => state.setProfile);
+  const darkMode = useAppStore(state => state.darkMode);
+  const setDarkMode = useAppStore(state => state.setDarkMode);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(profile.name || 'Friend');
 
@@ -58,62 +66,123 @@ export const ProfileScreen = ({ navigation }: any) => {
 
 
   // Zakat Calculator State
-  // Nisab based on silver standard: 612.36g silver. 
-  // We use a conservative fixed proxy of 595 USD. User can set currency context separately.
-  // The 2.5% rate (1/40) is fixed by Islamic law.
-  const NISAB_USD = 595; // Approx silver nisab — update periodically
   const ZAKAT_RATE = 0.025;
+  const SILVER_NISAB_GRAMS = 612.36;
+
+  type Currency = { code: string; symbol: string; name: string; };
+
+  const SUPPORTED_CURRENCIES: Currency[] = [
+    { code: 'USD', symbol: '$', name: 'US Dollar' },
+    { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
+    { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal' },
+    { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+    { code: 'PKR', symbol: '₨', name: 'Pakistani Rupee' },
+    { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka' },
+    { code: 'GBP', symbol: '£', name: 'British Pound' },
+    { code: 'EUR', symbol: '€', name: 'Euro' },
+    { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit' },
+    { code: 'IDR', symbol: 'Rp', name: 'Indonesian Rupiah' },
+    { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
+    { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound' },
+  ];
+
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(SUPPORTED_CURRENCIES[0]);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   const [zakat, setZakat] = useState({
     cash: '',
-    gold: '',
-    silver: '',
-    investments: '',
-    other: '',
-    debts: '',
+    goldGrams: '', goldValue: '', goldInputMode: 'value' as 'grams' | 'value',
+    silverGrams: '', silverValue: '', silverInputMode: 'value' as 'grams' | 'value',
+    investments: '', business: '', other: '', shortTermDebts: '',
   });
 
   type ZakatResult = {
-    netWealth: number;
-    zakatDue: number;
-    isEligible: boolean;
-    nisabThreshold: number;
+    netWealth: number; zakatDue: number; isEligible: boolean;
+    nisabInLocalCurrency: number; silverPricePerGram: number;
+    exchangeRate: number; currency: string; dataSource: 'live' | 'fallback';
   };
 
   const [zakatResult, setZakatResult] = useState<ZakatResult | null>(null);
+  const [zakatLoading, setZakatLoading] = useState(false);
   const [zakatError, setZakatError] = useState('');
+  const [hawlAcknowledged, setHawlAcknowledged] = useState(false);
 
-  const parseNum = (val: string) => {
-    const n = parseFloat(val.replace(/,/g, '').trim());
-    return isNaN(n) || n < 0 ? 0 : n;
+  const fetchNisabInLocalCurrency = async (currencyCode: string): Promise<{
+    nisab: number; silverPricePerGram: number; exchangeRate: number; source: 'live' | 'fallback';
+  }> => {
+    const FALLBACK_SILVER_USD_PER_GRAM = 0.96;
+    const FALLBACK_RATES: Record<string, number> = {
+      USD: 1, AED: 3.67, SAR: 3.75, INR: 83.5, PKR: 278,
+      BDT: 110, GBP: 0.79, EUR: 0.92, MYR: 4.7, IDR: 15800, TRY: 32.5, EGP: 48.5,
+    };
+    try {
+      let exchangeRate = FALLBACK_RATES[currencyCode] ?? 1;
+      let source: 'live' | 'fallback' = 'fallback';
+      try {
+        const rateRes = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`,
+          { signal: AbortSignal.timeout(5000) });
+        if (rateRes.ok) {
+          const rateData = await rateRes.json();
+          if (rateData.rates?.[currencyCode]) { exchangeRate = rateData.rates[currencyCode]; source = 'live'; }
+        }
+      } catch { }
+      let silverUsdPerGram = FALLBACK_SILVER_USD_PER_GRAM;
+      try {
+        const metalRes = await fetch('https://api.metals.live/v1/spot/silver',
+          { signal: AbortSignal.timeout(5000) });
+        if (metalRes.ok) {
+          const metalData = await metalRes.json();
+          const pricePerOz = metalData[0]?.price ?? metalData?.price;
+          if (pricePerOz && pricePerOz > 0) { silverUsdPerGram = pricePerOz / 31.1035; source = 'live'; }
+        }
+      } catch { }
+      return {
+        nisab: silverUsdPerGram * SILVER_NISAB_GRAMS * exchangeRate,
+        silverPricePerGram: silverUsdPerGram * exchangeRate,
+        exchangeRate, source,
+      };
+    } catch {
+      const exchangeRate = FALLBACK_RATES[currencyCode] ?? 1;
+      return {
+        nisab: FALLBACK_SILVER_USD_PER_GRAM * SILVER_NISAB_GRAMS * exchangeRate,
+        silverPricePerGram: FALLBACK_SILVER_USD_PER_GRAM * exchangeRate,
+        exchangeRate, source: 'fallback',
+      };
+    }
   };
 
-  const calculateZakat = useCallback(() => {
+  const calculateZakat = useCallback(async () => {
     setZakatError('');
-    const cash = parseNum(zakat.cash);
-    const gold = parseNum(zakat.gold);
-    const silver = parseNum(zakat.silver);
-    const investments = parseNum(zakat.investments);
-    const other = parseNum(zakat.other);
-    const debts = parseNum(zakat.debts);
-
-    const totalAssets = cash + gold + silver + investments + other;
-    const netWealth = Math.max(totalAssets - debts, 0);
-
-    setZakatResult({
-      netWealth,
-      zakatDue: netWealth >= NISAB_USD ? netWealth * ZAKAT_RATE : 0,
-      isEligible: netWealth >= NISAB_USD,
-      nisabThreshold: NISAB_USD,
-    });
-  }, [zakat]);
-
-  const updateZakatField = (field: keyof typeof zakat) => (val: string) => {
-    // Strip non-numeric chars except decimal point
-    const sanitized = val.replace(/[^0-9.]/g, '');
-    setZakat(prev => ({ ...prev, [field]: sanitized }));
-    setZakatResult(null); // reset result on input change
-  };
+    if (!hawlAcknowledged) {
+      setZakatError('Please confirm your wealth has been held for one full lunar year (Hawl).');
+      return;
+    }
+    setZakatLoading(true);
+    try {
+      const { nisab, silverPricePerGram, exchangeRate, source } =
+        await fetchNisabInLocalCurrency(selectedCurrency.code);
+      const parse = (val: string) => { const n = parseFloat(val.replace(/,/g, '').trim()); return isNaN(n) || n < 0 ? 0 : n; };
+      const goldTotal = zakat.goldInputMode === 'grams'
+        ? parse(zakat.goldGrams) * silverPricePerGram * 62
+        : parse(zakat.goldValue);
+      const silverTotal = zakat.silverInputMode === 'grams'
+        ? parse(zakat.silverGrams) * silverPricePerGram
+        : parse(zakat.silverValue);
+      const totalAssets = parse(zakat.cash) + goldTotal + silverTotal + parse(zakat.investments) + parse(zakat.business) + parse(zakat.other);
+      const netWealth = Math.max(totalAssets - parse(zakat.shortTermDebts), 0);
+      const isEligible = netWealth >= nisab;
+      setZakatResult({
+        netWealth, zakatDue: isEligible ? netWealth * ZAKAT_RATE : 0,
+        isEligible, nisabInLocalCurrency: nisab,
+        silverPricePerGram, exchangeRate,
+        currency: selectedCurrency.code, dataSource: source,
+      });
+    } catch {
+      setZakatError('Failed to fetch live rates. Check your connection and try again.');
+    } finally {
+      setZakatLoading(false);
+    }
+  }, [zakat, selectedCurrency, hawlAcknowledged]);
 
   // Build mood grid: last 30 days of sukoon entries + today's prayer moods
   const sukoonHistory = useAppStore(state => state.sukoonEntries);
@@ -133,7 +202,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   return (
     <ScreenWrapper>
       {/* Top Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: darkMode ? 'transparent' : 'rgba(251,249,244,0.97)' }]}>
         <View style={styles.headerLeft}>
           <View style={styles.avatar}>
             <Text style={{ color: Colors.primary, fontSize: 16, fontWeight: 'bold' }}>
@@ -182,8 +251,10 @@ export const ProfileScreen = ({ navigation }: any) => {
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700',
-                  fontFamily: 'Plus Jakarta Sans' }}>Save</Text>
+                <Text style={{
+                  color: '#fff', fontSize: 12, fontWeight: '700',
+                  fontFamily: 'Plus Jakarta Sans'
+                }}>Save</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
@@ -368,6 +439,42 @@ export const ProfileScreen = ({ navigation }: any) => {
           </View>
         </View>
 
+        {/* Appearance */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <View style={{
+            backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : '#f5f3ee',
+            borderRadius: 16,
+            padding: Spacing.lg,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: darkMode ? 'rgba(154,236,213,0.12)' : 'rgba(255,255,255,0.2)',
+          }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 15,
+                fontWeight: '700',
+                color: darkMode ? '#fff' : Colors.textDark,
+                marginBottom: 2,
+              }}>Dark Mode</Text>
+              <Text style={{
+                fontFamily: 'Manrope',
+                fontSize: 12,
+                color: darkMode ? 'rgba(255,255,255,0.5)' : Colors.textMuted,
+              }}>Deep forest green theme</Text>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: '#eae8e3', true: Colors.primary }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
         {/* Zakat Calculator */}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.zakatSection}>
@@ -375,93 +482,196 @@ export const ProfileScreen = ({ navigation }: any) => {
               <MaterialIcons name="calculate" size={24} color={Colors.secondary} />
               <Text style={styles.zakatTitle}>Zakat Calculator</Text>
             </View>
-            <Text style={styles.zakatDesc}>Purify your wealth. Enter your assets in your local currency. Nisab threshold is based on the silver standard (~595 USD equivalent).</Text>
+            <Text style={styles.zakatDesc}>
+              Calculate your annual Zakat obligation. Nisab is calculated using live silver prices (612.36g silver standard).
+            </Text>
 
-            {/* Input Fields */}
-            <View style={styles.zakatInputGroup}>
-              {[
-                { key: 'cash', label: 'Cash & Bank Savings', icon: 'account-balance' },
-                { key: 'gold', label: 'Gold Value', icon: 'diamond' },
-                { key: 'silver', label: 'Silver Value (optional)', icon: 'spa' },
-                { key: 'investments', label: 'Investments & Stocks', icon: 'trending-up' },
-                { key: 'other', label: 'Other Assets', icon: 'inventory' },
-              ].map(({ key, label, icon }) => (
-                <View key={key} style={styles.zakatInputRow}>
-                  <View style={styles.zakatInputIcon}>
-                    <MaterialIcons name={icon as any} size={18} color={Colors.secondary} />
+            {/* Currency Selector */}
+            <TouchableOpacity style={styles.currencySelector} onPress={() => setShowCurrencyPicker(true)}>
+              <Text style={styles.currencySelectorLabel}>CURRENCY</Text>
+              <View style={styles.currencySelectorRight}>
+                <Text style={styles.currencySelectorValue}>{selectedCurrency.symbol} {selectedCurrency.code} — {selectedCurrency.name}</Text>
+                <MaterialIcons name="expand-more" size={20} color={Colors.secondary} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Currency Picker Modal */}
+            <Modal visible={showCurrencyPicker} transparent animationType="slide">
+              <View style={styles.pickerOverlay}>
+                <View style={styles.pickerSheet}>
+                  <View style={styles.pickerHeader}>
+                    <Text style={styles.pickerTitle}>Select Currency</Text>
+                    <TouchableOpacity onPress={() => setShowCurrencyPicker(false)}>
+                      <MaterialIcons name="close" size={24} color={Colors.textMuted} />
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.zakatInputFieldWrap}>
-                    <Text style={styles.zakatInputLabel}>{label}</Text>
-                    <TextInput
-                      style={styles.zakatInputField}
-                      value={zakat[key as keyof typeof zakat]}
-                      onChangeText={updateZakatField(key as keyof typeof zakat)}
-                      keyboardType="decimal-pad"
-                      placeholder="0.00"
-                      placeholderTextColor={Colors.textMuted}
-                    />
-                  </View>
+                  <ScrollView>
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <TouchableOpacity key={c.code}
+                        style={[styles.pickerRow, selectedCurrency.code === c.code && styles.pickerRowActive]}
+                        onPress={() => { setSelectedCurrency(c); setShowCurrencyPicker(false); setZakatResult(null); }}>
+                        <Text style={styles.pickerRowSymbol}>{c.symbol}</Text>
+                        <Text style={styles.pickerRowCode}>{c.code}</Text>
+                        <Text style={styles.pickerRowName}>{c.name}</Text>
+                        {selectedCurrency.code === c.code && <MaterialIcons name="check" size={18} color={Colors.primary} />}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              ))}
+              </View>
+            </Modal>
 
-              {/* Debts – highlighted separately */}
+            {/* Asset Inputs */}
+            <View style={styles.zakatInputGroup}>
+              {/* Cash */}
+              <View style={styles.zakatInputRow}>
+                <View style={styles.zakatInputIcon}><MaterialIcons name="account-balance" size={18} color={Colors.secondary} /></View>
+                <View style={styles.zakatInputFieldWrap}>
+                  <Text style={styles.zakatInputLabel}>Cash & Bank Savings</Text>
+                  <TextInput style={styles.zakatInputField} value={zakat.cash}
+                    onChangeText={(v) => setZakat(p => ({ ...p, cash: v.replace(/[^0-9.]/g, '') }))}
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                </View>
+              </View>
+
+              {/* Gold */}
+              <View style={[styles.zakatInputRow, { flexDirection: 'column', gap: 8 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={styles.zakatInputIcon}><MaterialIcons name="diamond" size={18} color={Colors.secondary} /></View>
+                  <Text style={[styles.zakatInputLabel, { flex: 1, marginBottom: 0 }]}>Gold</Text>
+                  <TouchableOpacity style={styles.toggleModeBtn}
+                    onPress={() => setZakat(p => ({ ...p, goldInputMode: p.goldInputMode === 'grams' ? 'value' : 'grams' }))}>
+                    <Text style={styles.toggleModeBtnText}>{zakat.goldInputMode === 'grams' ? 'Switch to Value' : 'Enter'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <TextInput style={[styles.zakatInputField, { paddingLeft: 12 }]}
+                  value={zakat.goldInputMode === 'grams' ? zakat.goldGrams : zakat.goldValue}
+                  onChangeText={(v) => setZakat(p => zakat.goldInputMode === 'grams' ? { ...p, goldGrams: v.replace(/[^0-9.]/g, '') } : { ...p, goldValue: v.replace(/[^0-9.]/g, '') })}
+                  keyboardType="decimal-pad"
+                  placeholder={zakat.goldInputMode === 'grams' ? 'Weight in grams' : `Market value in ${selectedCurrency.code}`}
+                  placeholderTextColor={Colors.textMuted} />
+              </View>
+
+              {/* Silver */}
+              <View style={[styles.zakatInputRow, { flexDirection: 'column', gap: 8 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={styles.zakatInputIcon}><MaterialIcons name="spa" size={18} color={Colors.secondary} /></View>
+                  <Text style={[styles.zakatInputLabel, { flex: 1, marginBottom: 0 }]}>Silver</Text>
+                  <TouchableOpacity style={styles.toggleModeBtn}
+                    onPress={() => setZakat(p => ({ ...p, silverInputMode: p.silverInputMode === 'grams' ? 'value' : 'grams' }))}>
+                    <Text style={styles.toggleModeBtnText}>{zakat.silverInputMode === 'grams' ? 'Switch to Value' : 'Enter'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <TextInput style={[styles.zakatInputField, { paddingLeft: 12 }]}
+                  value={zakat.silverInputMode === 'grams' ? zakat.silverGrams : zakat.silverValue}
+                  onChangeText={(v) => setZakat(p => zakat.silverInputMode === 'grams' ? { ...p, silverGrams: v.replace(/[^0-9.]/g, '') } : { ...p, silverValue: v.replace(/[^0-9.]/g, '') })}
+                  keyboardType="decimal-pad"
+                  placeholder={zakat.silverInputMode === 'grams' ? 'Weight in grams' : `Market value in ${selectedCurrency.code}`}
+                  placeholderTextColor={Colors.textMuted} />
+              </View>
+
+              {/* Investments */}
+              <View style={styles.zakatInputRow}>
+                <View style={styles.zakatInputIcon}><MaterialIcons name="trending-up" size={18} color={Colors.secondary} /></View>
+                <View style={styles.zakatInputFieldWrap}>
+                  <Text style={styles.zakatInputLabel}>Investments & Stocks</Text>
+                  <TextInput style={styles.zakatInputField} value={zakat.investments}
+                    onChangeText={(v) => setZakat(p => ({ ...p, investments: v.replace(/[^0-9.]/g, '') }))}
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                </View>
+              </View>
+
+              {/* Business */}
+              <View style={styles.zakatInputRow}>
+                <View style={styles.zakatInputIcon}><MaterialIcons name="store" size={18} color={Colors.secondary} /></View>
+                <View style={styles.zakatInputFieldWrap}>
+                  <Text style={styles.zakatInputLabel}>Business Inventory</Text>
+                  <TextInput style={styles.zakatInputField} value={zakat.business}
+                    onChangeText={(v) => setZakat(p => ({ ...p, business: v.replace(/[^0-9.]/g, '') }))}
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                </View>
+              </View>
+
+              {/* Other */}
+              <View style={styles.zakatInputRow}>
+                <View style={styles.zakatInputIcon}><MaterialIcons name="inventory" size={18} color={Colors.secondary} /></View>
+                <View style={styles.zakatInputFieldWrap}>
+                  <Text style={styles.zakatInputLabel}>Other Zakatable Assets</Text>
+                  <TextInput style={styles.zakatInputField} value={zakat.other}
+                    onChangeText={(v) => setZakat(p => ({ ...p, other: v.replace(/[^0-9.]/g, '') }))}
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                </View>
+              </View>
+
+              {/* Short-term Debts */}
               <View style={[styles.zakatInputRow, styles.zakatDebtRow]}>
                 <View style={[styles.zakatInputIcon, { backgroundColor: 'rgba(186,26,26,0.1)' }]}>
                   <MaterialIcons name="remove-circle-outline" size={18} color="#ba1a1a" />
                 </View>
                 <View style={styles.zakatInputFieldWrap}>
-                  <Text style={[styles.zakatInputLabel, { color: '#ba1a1a' }]}>Debts / Liabilities</Text>
-                  <TextInput
-                    style={styles.zakatInputField}
-                    value={zakat.debts}
-                    onChangeText={updateZakatField('debts')}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                  />
+                  <Text style={[styles.zakatInputLabel, { color: '#ba1a1a' }]}>Short-term Debts (due within 12 months only)</Text>
+                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, color: Colors.textMuted, marginBottom: 4 }}>
+                    Do not include mortgages — only this year's due amount
+                  </Text>
+                  <TextInput style={styles.zakatInputField} value={zakat.shortTermDebts}
+                    onChangeText={(v) => setZakat(p => ({ ...p, shortTermDebts: v.replace(/[^0-9.]/g, '') }))}
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
                 </View>
               </View>
             </View>
 
-            {/* Error */}
+            {/* Hawl Acknowledgment */}
+            <TouchableOpacity style={styles.hawlRow} onPress={() => setHawlAcknowledged(v => !v)} activeOpacity={0.7}>
+              <View style={[styles.hawlCheckbox, hawlAcknowledged && styles.hawlCheckboxChecked]}>
+                {hawlAcknowledged && <MaterialIcons name="check" size={14} color="#fff" />}
+              </View>
+              <Text style={styles.hawlText}>I confirm this wealth has been in my possession for one full lunar year (Hawl)</Text>
+            </TouchableOpacity>
+
             {zakatError ? <Text style={styles.zakatErrorText}>{zakatError}</Text> : null}
 
             {/* Result */}
             {zakatResult && (
               <View style={[styles.zakatResultCard, zakatResult.isEligible ? styles.zakatResultEligible : styles.zakatResultNone]}>
                 <View style={styles.zakatResultRow}>
-                  <Text style={styles.zakatResultLabel}>Net Wealth</Text>
-                  <Text style={styles.zakatResultValue}>{zakatResult.netWealth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                  <Text style={styles.zakatResultLabel}>Currency</Text>
+                  <Text style={styles.zakatResultValue}>{zakatResult.currency}</Text>
                 </View>
                 <View style={styles.zakatResultRow}>
                   <Text style={styles.zakatResultLabel}>Nisab Threshold</Text>
-                  <Text style={styles.zakatResultValue}>~{zakatResult.nisabThreshold.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                  <Text style={styles.zakatResultValue}>{zakatResult.nisabInLocalCurrency.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.zakatResultRow}>
+                  <Text style={styles.zakatResultLabel}>Net Wealth</Text>
+                  <Text style={styles.zakatResultValue}>{zakatResult.netWealth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 <View style={[styles.zakatResultRow, styles.zakatResultDivider]} />
                 {zakatResult.isEligible ? (
                   <>
                     <Text style={styles.zakatEligibleLabel}>Zakat Due (2.5%)</Text>
-                    <Text style={styles.zakatAmount}>{zakatResult.zakatDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                    <Text style={styles.zakatAmount}>{selectedCurrency.symbol}{zakatResult.zakatDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     <Text style={styles.zakatNote}>May Allah accept your charity.</Text>
                   </>
                 ) : (
                   <>
-                    <Text style={styles.zakatNoZakatLabel}><MaterialIcons name="check-circle" size={18} color={Colors.primary} /> No Zakat Due</Text>
-                    <Text style={styles.zakatNote}>Your net wealth is below the Nisab threshold. Zakat is not obligatory this year.</Text>
+                    <Text style={styles.zakatNoZakatLabel}>No Zakat Due</Text>
+                    <Text style={styles.zakatNote}>Your net wealth is below the Nisab threshold.</Text>
                   </>
                 )}
+                <Text style={[styles.zakatNote, { marginTop: 8, opacity: 0.6 }]}>
+                  {zakatResult.dataSource === 'live' ? '✓ Live silver prices used' : '⚠ Fallback rates — connect to internet for live prices'}
+                </Text>
               </View>
             )}
 
-            {/* Calculate Button */}
-            <TouchableOpacity style={styles.zakatCalcBtn} onPress={calculateZakat} activeOpacity={0.8}>
-              <MaterialIcons name="calculate" size={20} color="#fff" />
-              <Text style={styles.zakatCalcBtnText}>Calculate Now</Text>
+            <TouchableOpacity style={styles.zakatCalcBtn} onPress={calculateZakat} activeOpacity={0.8} disabled={zakatLoading}>
+              {zakatLoading
+                ? <ActivityIndicator color="#fff" />
+                : <><MaterialIcons name="calculate" size={20} color="#fff" /><Text style={styles.zakatCalcBtnText}>Calculate Zakat</Text></>}
             </TouchableOpacity>
 
-            {/* Nisab info */}
             <Text style={styles.zakatNisabNote}>
-              <MaterialIcons name="menu-book" size={14} color={Colors.textMuted} /> Nisab is based on the silver standard (612.36g). Zakat is computed at 2.5% on wealth held for one full lunar year (Hawl).
+              Nisab = 612.36g silver × live price per gram. Zakat = 2.5% on net zakatable wealth above Nisab.
             </Text>
           </View>
 
@@ -701,4 +911,23 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 2,
   },
+  currencySelector: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(115,92,0,0.12)', marginBottom: 16 },
+  currencySelectorLabel: { fontFamily: 'Plus Jakarta Sans', fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 4 },
+  currencySelectorRight: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  currencySelectorValue: { fontFamily: 'Manrope', fontSize: 15, fontWeight: '600', color: Colors.textDark },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40, maxHeight: '70%' },
+  pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  pickerTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: '800', color: Colors.textDark },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 8, borderRadius: 10 },
+  pickerRowActive: { backgroundColor: 'rgba(15,109,91,0.06)' },
+  pickerRowSymbol: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.primary, width: 28 },
+  pickerRowCode: { fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '700', color: Colors.textDark, width: 44 },
+  pickerRowName: { fontFamily: 'Manrope', fontSize: 14, color: Colors.textMuted, flex: 1 },
+  toggleModeBtn: { backgroundColor: 'rgba(115,92,0,0.08)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  toggleModeBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 11, fontWeight: '700', color: Colors.secondary },
+  hawlRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16, padding: 14, backgroundColor: 'rgba(15,109,91,0.05)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(15,109,91,0.1)' },
+  hawlCheckbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  hawlCheckboxChecked: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  hawlText: { fontFamily: 'Manrope', fontSize: 13, color: Colors.textDark, lineHeight: 20, flex: 1 },
 });

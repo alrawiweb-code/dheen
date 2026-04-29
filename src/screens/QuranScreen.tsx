@@ -21,6 +21,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Colors, NativeSpacing as Spacing, Shadows, Typography } from '../theme';
+import { DarkColors, LightColors } from '../theme/darkMode';
 import { fetchSurahList, SurahInfo } from '../services/quranApi';
 import { useAppStore, TranslationLangCode } from '../store/useAppStore';
 import { downloadLanguagePack } from '../services/translationManager';
@@ -42,7 +43,10 @@ export const QuranScreen = () => {
     playTranslationAudio, setPlayTranslationAudio,
     translationLang, setTranslationLang,
     languagePacks,
+    darkMode,
   } = useAppStore();
+
+  const theme = darkMode ? DarkColors : LightColors;
 
   const bottomInset = useScreenBottomInset();
   const insets = useSafeAreaInsets();
@@ -140,19 +144,46 @@ export const QuranScreen = () => {
     return (
       <TouchableOpacity
         id={`surah-item-${item.number}`}
-        style={[styles.surahItem, isFirst && styles.surahItemHighlighted]}
+        style={[
+          styles.surahItem,
+          isFirst && styles.surahItemHighlighted,
+          darkMode && { backgroundColor: 'rgba(255,255,255,0.03)' }
+        ]}
         onPress={() => openSurah(item)}
         activeOpacity={0.7}
       >
-        {/* Left: number + name */}
-        <View style={styles.surahItemLeft}>
+        {/* Single row: number box + name block */}
+        <View style={styles.surahItemTopRow}>
+          {/* Number box */}
           <View style={[styles.surahNumberBox, isFirst && styles.surahNumberBoxHighlighted]}>
             <Text style={[styles.surahNumberText, isFirst && styles.surahNumberTextHighlighted]}>
               {item.number}
             </Text>
           </View>
-          <View>
-            <Text style={styles.surahName}>{item.englishName}</Text>
+
+          {/* Name block — takes remaining space */}
+          <View style={styles.surahNameBlock}>
+            {/* English + Arabic — wraps to next line if no room */}
+            <View style={styles.surahNameRow}>
+              <Text
+                style={[styles.surahName, darkMode && { color: '#fff' }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
+                {item.englishName}
+              </Text>
+              <Text
+                style={styles.surahArabicTitle}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
+                {item.name}
+              </Text>
+            </View>
+
+            {/* Meta row: badge + verses + translation */}
             <View style={styles.metaRow}>
               <View style={[styles.revelationBadge, { backgroundColor: badge.bg }]}>
                 <Text style={[styles.revelationText, { color: badge.text }]}>
@@ -160,27 +191,22 @@ export const QuranScreen = () => {
                 </Text>
               </View>
               <Text style={styles.surahMeta}>{item.numberOfAyahs} VERSES</Text>
+              <Text style={styles.surahEnglishTranslation}>
+                {item.englishNameTranslation.toUpperCase()}
+              </Text>
             </View>
           </View>
-        </View>
-
-        {/* Right: arabic + translation */}
-        <View style={styles.surahItemRight}>
-          <Text style={styles.surahArabicTitle}>{item.name}</Text>
-          <Text style={styles.surahEnglishTranslation}>
-            {item.englishNameTranslation.toUpperCase()}
-          </Text>
         </View>
       </TouchableOpacity>
     );
   };
 
-  // ── Header: hero card + search bar ────────────────────────────
-  const ListHeader = () => (
+  // ── Header: hero card ─────────────────────────────────────────
+  const ListHeader = useCallback(() => (
     <>
       {/* Continue reading hero */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Last Reading</Text>
+        <Text style={[styles.sectionTitle, darkMode && { color: '#9aecd5' }]}>Last Reading</Text>
         <View style={styles.heroCard}>
           <LinearGradient
             colors={[Colors.primary, '#0f6d5b']}
@@ -219,40 +245,20 @@ export const QuranScreen = () => {
         </View>
       </View>
 
-      {/* Search bar */}
-      <View style={styles.searchContainer}>
-        <MaterialIcons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
-        <TextInput
-          id="surah-search-input"
-          style={styles.searchInput}
-          placeholder="Search surahs…"
-          placeholderTextColor={Colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-          autoCorrect={false}
-          clearButtonMode="while-editing"
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')}>
-            <MaterialIcons name="close" size={18} color={Colors.textMuted} />
-          </TouchableOpacity>
-        )}
-      </View>
-
       {/* Section title */}
       <View style={styles.exploreTitleRow}>
-        <Text style={styles.sectionTitle}>Explore Surahs</Text>
+        <Text style={[styles.sectionTitle, darkMode && { color: '#9aecd5' }]}>Explore Surahs</Text>
         <Text style={styles.surahCount}>{filtered.length} / 114</Text>
       </View>
     </>
-  );
+  ), [lastReading, filtered.length, darkMode, navigation]);
 
   return (
-    <ScreenWrapper style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <ScreenWrapper style={[styles.container, { backgroundColor: darkMode ? '#001a12' : Colors.background }]}>
+      <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
 
       {/* Top Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: darkMode ? 'transparent' : 'rgba(251,249,244,0.97)' }]}>
         <View style={styles.headerLeft}>
           <View style={styles.avatar}>
              <Text style={{color: Colors.primary, fontSize: 16, fontWeight: 'bold'}}>{profile?.name?.[0]?.toUpperCase() || 'A'}</Text>
@@ -296,22 +302,62 @@ export const QuranScreen = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(s) => String(s.number)}
-          renderItem={renderSurah}
-          ListHeaderComponent={<ListHeader />}
-          ListEmptyComponent={
-            <View style={styles.centered}>
-              <Text style={styles.emptyText}>No surahs match "{query}"</Text>
-            </View>
-          }
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 80 }]}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={20}
-          maxToRenderPerBatch={30}
-          windowSize={10}
-        />
+        <View style={{ flex: 1 }}>
+          {/* Search bar — rendered outside FlatList to prevent keyboard dismiss */}
+          <View style={[styles.searchContainer, { marginHorizontal: Spacing.xl, marginTop: Spacing.md }, darkMode ? {
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderColor: 'rgba(154,236,213,0.25)',
+            borderWidth: 1,
+            shadowColor: 'transparent',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0,
+            shadowRadius: 0,
+            elevation: 0,
+          } : {
+            backgroundColor: '#fff',
+            borderColor: '#eae8e3',
+            borderWidth: 1,
+          }]}>
+            <MaterialIcons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
+            <TextInput
+              id="surah-search-input"
+              style={[styles.searchInput, { color: theme.textPrimary }]}
+              placeholder="Search surahs…"
+              placeholderTextColor={Colors.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              underlineColorAndroid="transparent"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery('')}>
+                <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <FlatList
+            data={filtered}
+            keyExtractor={(s) => String(s.number)}
+            renderItem={renderSurah}
+            ListHeaderComponent={<ListHeader />}
+            ListEmptyComponent={
+              <View style={styles.centered}>
+                <Text style={styles.emptyText}>No surahs match "{query}"</Text>
+              </View>
+            }
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 80 }]}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={20}
+            maxToRenderPerBatch={30}
+            windowSize={10}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="none"
+          />
+        </View>
       )}
 
 
@@ -512,7 +558,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing['2xl'],
     borderWidth: 1,
     borderColor: '#eae8e3',
-    ...Shadows.sm,
   },
   searchIcon: { marginRight: 10 },
   searchInput: {
@@ -521,6 +566,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textDark,
     padding: 0,
+    borderWidth: 0,
+    outlineWidth: 0,
   },
 
   // ── Surah list header ──
@@ -529,10 +576,7 @@ const styles = StyleSheet.create({
 
   // ── Surah item ──
   surahItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 20,
     marginBottom: 4,
@@ -543,7 +587,23 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderColor: Colors.primary,
   },
-  surahItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 },
+  surahItemTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  surahNameBlock: {
+    flex: 1,
+    flexShrink: 1,
+  },
+  surahNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginBottom: 4,
+  },
   surahNumberBox: {
     width: 48,
     height: 48,
@@ -556,14 +616,34 @@ const styles = StyleSheet.create({
   surahNumberBoxHighlighted: { backgroundColor: Colors.primary },
   surahNumberText: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.primary },
   surahNumberTextHighlighted: { color: '#fff' },
-  surahName: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.textDark, marginBottom: 4 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  surahName: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textDark,
+    flexShrink: 1,
+  },
+  surahArabicTitle: {
+    fontFamily: 'ScheherazadeNew-Regular',
+    fontSize: 20,
+    color: Colors.primary,
+    textAlign: 'right',
+    flexShrink: 1,
+  },
+  surahEnglishTranslation: {
+    fontFamily: 'Manrope',
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   revelationBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   revelationText: { fontFamily: 'Manrope', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
   surahMeta: { fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted, letterSpacing: 1 },
-  surahItemRight: { alignItems: 'flex-end', flexShrink: 0 },
-  surahArabicTitle: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 22, color: Colors.primary, marginBottom: 2 },
-  surahEnglishTranslation: { fontFamily: 'Manrope', fontSize: 10, color: Colors.textMuted },
 
   // ── States ──
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 12 },

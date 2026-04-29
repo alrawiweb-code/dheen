@@ -4,7 +4,7 @@ import { useAppStore } from '../store/useAppStore';
 import { PrayerTimes, getCalendarForMonth, DailyPrayerData } from './prayerTimes';
 import { handleAdhanTrigger } from './adhanManager';
 import { Prayer } from '../theme';
-import { navigationRef } from '../navigation/RootNavigator';
+import { navigationRef } from '../navigation/navigationRef';
 
 /**
  * Configure standard foreground handling rule.
@@ -14,10 +14,10 @@ import { navigationRef } from '../navigation/RootNavigator';
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
+      shouldShowAlert: false,
+      shouldShowBanner: false,
+      shouldShowList: false,
+      shouldPlaySound: false,
       shouldSetBadge: false,
     }),
   });
