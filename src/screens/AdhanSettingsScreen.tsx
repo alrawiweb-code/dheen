@@ -24,10 +24,11 @@ import {
   playShortAdhan,
   vibrateAdhan,
 } from '../services/adhanManager';
-import { syncPrayerNotifications, requestNotificationPermissions } from '../services/notificationManager';
+import { syncPrayerNotifications, requestNotificationPermissions, scheduleTestAdhanNotification } from '../services/notificationManager';
 import { refreshDeviceCoordinates } from '../services/locationManager';
 import { isCached } from '../services/audioCache';
 import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 const PRAYERS = [
   { id: 'Fajr',    icon: 'brightness-3',  label: 'Dawn Prayer',      color: Colors.secondary, special: true  },
@@ -48,6 +49,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [alertPreviewMode, setAlertPreviewMode] = useState<string | null>(null);
   const [downloadedVoices, setDownloadedVoices] = useState<Record<string, boolean>>({});
+  const [testTime, setTestTime] = useState('');
 
   const [showSavedToast, setShowSavedToast] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
@@ -200,12 +202,21 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
         {/* Battery Optimization Info */}
         {adhanSettings.masterEnabled && Platform.OS === 'android' && (
-          <View style={[styles.infoCard, { backgroundColor: darkMode ? 'rgba(234, 179, 8, 0.1)' : '#FEF9C3' }]}>
+          <TouchableOpacity 
+            style={[styles.infoCard, { backgroundColor: darkMode ? 'rgba(234, 179, 8, 0.1)' : '#FEF9C3' }]}
+            onPress={() => {
+              try {
+                IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+              } catch (e) {
+                console.log('Failed to launch battery settings', e);
+              }
+            }}
+          >
             <MaterialIcons name="info-outline" size={20} color={darkMode ? '#FDE047' : '#CA8A04'} style={{ marginTop: 2 }} />
             <Text style={[styles.infoText, { color: darkMode ? '#FDE047' : '#854D0E' }]}>
-              If Adhan is delayed, please go to your device Settings and turn off Battery Optimization for Muslim Go Plus.
+              If Adhan is delayed, tap here to turn off Battery Optimization for Muslim Go Plus.
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
 
         {/* ── Auto-Location ── */}
@@ -445,6 +456,58 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
               );
             })}
           </View>
+        </View>
+
+        {/* ── DEVELOPER SETTINGS (TEMPORARY) ── */}
+        <Text style={[styles.sectionLabel, { color: 'orange', marginTop: 20 }]}>DEVELOPER SETTINGS (TEMPORARY)</Text>
+        <View style={[styles.masterCard, { backgroundColor: cardBg, marginBottom: Spacing['3xl'], flexDirection: 'column', alignItems: 'flex-start', gap: 14, borderColor: 'orange' }]}>
+          <View>
+            <Text style={[styles.masterTitle, { color: titleColor }]}>Test Adhan Notification</Text>
+            <Text style={styles.masterSub}>Set a custom time (HH:MM 24hr format) to trigger a test notification</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', width: '100%' }}>
+            <TextInput
+              style={[styles.locationInput, darkMode && styles.locationInputDark, { flex: 1 }]}
+              placeholder="HH:MM (e.g. 14:30)"
+              placeholderTextColor={darkMode ? 'rgba(255,255,255,0.3)' : Colors.textMuted}
+              value={testTime}
+              onChangeText={setTestTime}
+              keyboardType="numbers-and-punctuation"
+              maxLength={5}
+            />
+            <TouchableOpacity
+              style={{
+                backgroundColor: 'orange',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderRadius: 10,
+              }}
+              onPress={() => {
+                const parts = testTime.split(':');
+                if (parts.length !== 2) {
+                  Alert.alert('Invalid Format', 'Please use HH:MM format');
+                  return;
+                }
+                const hr = parseInt(parts[0], 10);
+                const mn = parseInt(parts[1], 10);
+                if (isNaN(hr) || isNaN(mn) || hr < 0 || hr > 23 || mn < 0 || mn > 59) {
+                  Alert.alert('Invalid Time', 'Please enter a valid time');
+                  return;
+                }
+                const target = new Date();
+                target.setHours(hr, mn, 0, 0);
+                if (target <= new Date()) {
+                  target.setDate(target.getDate() + 1);
+                }
+                scheduleTestAdhanNotification(target);
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Schedule Test</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: -4 }}>
+            Verify that you receive the notification and the correct audio plays.
+          </Text>
         </View>
 
       </ScrollView>

@@ -28,20 +28,20 @@ const FAJR_PHRASE_SOUND = 'fajr_bank.mp3';
 
 // One channel per voice + one for Fajr phrase + one for beep + one for silent
 const CHANNEL_IDS: Record<string, string> = {
-  makkah:      'adhan_makkah',
-  madinah:     'adhan_madinah',
-  alaqsa:      'adhan_alaqsa',
-  fajr_phrase: 'adhan_fajr_phrase',
-  beep:        'adhan_beep',
-  silent:      'adhan_silent',
-  pre_alert:   'adhan_pre_alert',
+  makkah:      'adhan_makkah_v5',
+  madinah:     'adhan_madinah_v5',
+  alaqsa:      'adhan_alaqsa_v5',
+  fajr_phrase: 'adhan_fajr_phrase_v5',
+  beep:        'adhan_beep_v5',
+  silent:      'adhan_silent_v5',
+  pre_alert:   'adhan_pre_alert_v5',
 };
 
 // ── Android Notification Channels ───────────────────────────────────────────
 // Android 8+ REQUIRES a notification channel. The sound set on the channel
 // is what the OS plays automatically at trigger time — no app code needed.
 // ─────────────────────────────────────────────────────────────────────────────
-async function ensureAndroidChannels(): Promise<void> {
+export async function ensureAndroidChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
 
   try {
@@ -63,6 +63,11 @@ async function ensureAndroidChannels(): Promise<void> {
         enableLights: true,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         bypassDnd: true, // Prayer alerts should bypass Do Not Disturb
+        audioAttributes: {
+          usage: Notifications.AndroidAudioUsage.ALARM,
+          contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+          flags: { enforceAudibility: true, requestHardwareAudioVideoSynchronization: false },
+        },
       });
     }
 
@@ -366,10 +371,8 @@ export const syncPrayerNotifications = async (forceResync = false) => {
               voiceKey: prayerConfig.voice,
               alertType: prayerConfig.alertType,
             },
-            // Android: assign to the voice-specific channel which also has the sound set
-            ...(Platform.OS === 'android' ? { channelId } : {}),
           },
-          trigger: { type: 'date', date: triggerDate } as any,
+          trigger: { type: 'date', date: triggerDate, channelId } as any,
         });
         scheduledCount++;
       } catch (scheduleError) {
@@ -387,9 +390,8 @@ export const syncPrayerNotifications = async (forceResync = false) => {
                 body: `Prepare for ${prayer} prayer`,
                 sound: 'default',
                 data: { intent: 'pre_alert', prayer },
-                ...(Platform.OS === 'android' ? { channelId: CHANNEL_IDS.pre_alert } : {}),
               },
-              trigger: { type: 'date', date: preAlertDate } as any,
+              trigger: { type: 'date', date: preAlertDate, channelId: CHANNEL_IDS.pre_alert } as any,
             });
             scheduledCount++;
           } catch (preAlertError) {
@@ -410,6 +412,45 @@ export const syncPrayerNotifications = async (forceResync = false) => {
 
   console.log(`[NotificationManager] Successfully scheduled ${scheduledCount} notifications for the next 30 days.`);
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEVELOPER TESTING (TEMPORARY)
+// ─────────────────────────────────────────────────────────────────────────────
+export const scheduleTestAdhanNotification = async (targetDate: Date) => {
+  if (Platform.OS === 'web') return;
+
+  await ensureAndroidChannels();
+
+  const store = useAppStore.getState();
+  const prayerConfig = store.adhanSettings.prayers['Fajr'];
+  const fajrPhrase = prayerConfig.fajrPhrase ?? true;
+  
+  // Use current settings
+  const channelId = getChannelForPrayer('Fajr', prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
+  const soundFile = getSoundForPrayer('Fajr', prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Test Adhan (Fajr)`,
+        body: `This is a test notification scheduled for ${targetDate.toLocaleTimeString()}`,
+        sound: soundFile ?? undefined,
+        data: {
+          intent: 'play_adhan',
+          prayer: 'Fajr',
+          voiceKey: prayerConfig.voice,
+          alertType: prayerConfig.alertType,
+        },
+      },
+      trigger: { type: 'date', date: targetDate, channelId } as any,
+    });
+    Alert.alert('Developer Test', `Adhan test scheduled for ${targetDate.toLocaleTimeString()}`);
+  } catch (err) {
+    console.warn('[NotificationManager] Test schedule failed', err);
+    Alert.alert('Error', 'Could not schedule test notification');
+  }
+};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTIFICATION LISTENERS
