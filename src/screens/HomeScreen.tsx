@@ -56,7 +56,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const cardSlide = useRef(new Animated.Value(30)).current;
 
   const [now, setNow] = useState(() => new Date());
-  
+
   const hour = now.getHours();
   const greetingIcon = hour < 12 ? 'wb-twilight' : hour < 18 ? 'wb-sunny' : 'nightlight-round';
   const greeting = profile?.name ? `السلام عليكم، ${profile.name}` : 'السلام عليكم';
@@ -105,7 +105,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const nextTimeStr = nextPrayer?.nextTime;
-  
+
   useEffect(() => {
     // Ticker for next prayer and current time
     const updateTick = () => {
@@ -232,246 +232,277 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </>
       }
     >
-        {/* Offline Warning Banner */}
-        {isOfflineMode && (
-          <View style={{ backgroundColor: 'rgba(255, 100, 100, 0.2)', padding: 12, borderRadius: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
-            <MaterialIcons name="wifi-off" size={20} color="#ffcccc" style={{ marginRight: 8 }} />
-            <Text style={{ color: '#ffcccc', fontSize: 13, fontFamily: 'Plus Jakarta Sans', flex: 1 }}>
-              Network offline. Showing estimated local prayer times.
-            </Text>
-          </View>
-        )}
+      {/* Offline Warning Banner */}
+      {isOfflineMode && (
+        <View style={{ backgroundColor: 'rgba(255, 100, 100, 0.2)', padding: 12, borderRadius: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+          <MaterialIcons name="wifi-off" size={20} color="#ffcccc" style={{ marginRight: 8 }} />
+          <Text style={{ color: '#ffcccc', fontSize: 13, fontFamily: 'Plus Jakarta Sans', flex: 1 }}>
+            Network offline. Showing estimated local prayer times.
+          </Text>
+        </View>
+      )}
 
-        {/* Header */}
-        <Animated.View style={[styles.header, { opacity: headerFade }]}>
-          <View style={styles.profileRow}>
-            <View style={styles.nameBlock}>
-              <Text style={[styles.greetingText, { color: theme.textPrimary }]} numberOfLines={1}>{greeting} <MaterialIcons name={greetingIcon as any} size={16} color="#1F3D2B" /></Text>
-              <Text style={[styles.timeText, { color: theme.textMuted }]}>{timeStr}</Text>
-            </View>
+      {/* Header */}
+      <Animated.View style={[styles.header, { opacity: headerFade }]}>
+        <View style={styles.profileRow}>
+          <View style={styles.nameBlock}>
+            <Text style={[styles.greetingText, { color: theme.textPrimary }]} numberOfLines={1}>{greeting} <MaterialIcons name={greetingIcon as any} size={16} color="#1F3D2B" /></Text>
+            <Text style={styles.timeText}>{timeStr}</Text>
           </View>
-          <View style={styles.headerRight}>
-            <Image
-              source={require('../../assets/icon.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-            <HijriDateBadge hijri={hijri} />
-          </View>
-        </Animated.View>
-
-        {/* Intention Card */}
-        <TouchableOpacity 
-          activeOpacity={0.7} 
-          onPress={() => navigation.navigate('SetNiyyah')} 
-          style={[styles.intentionCard, {
-            backgroundColor: theme.cardBg,
-            borderColor: darkMode ? 'rgba(154,236,213,0.15)' : Colors.accent,
-          }]}
-        >
-          <View style={styles.intentionIconBox}>
-            <MaterialIcons name="auto-awesome" size={20} color="#C9A23F" />
-          </View>
-          <View style={styles.intentionTextContainer}>
-            {todayNiyyah ? (
-              <>
-                <Text style={[styles.intentionTitle, { color: theme.textPrimary }]}>Your intention today:</Text>
-                <Text style={[styles.intentionSubtitle, { color: theme.textMuted }]} numberOfLines={1}>"{todayNiyyah}"</Text>
-              </>
-            ) : (
-              <>
-                <Text style={[styles.intentionTitle, { color: theme.textPrimary }]}>Set your intention for today</Text>
-                <Text style={[styles.intentionSubtitle, { color: theme.textMuted }]}>Align your actions with purpose</Text>
-              </>
-            )}
-          </View>
-          <MaterialIcons name={todayNiyyah ? "edit" : "chevron-right"} size={22} color="#9CA3AF" />
-        </TouchableOpacity>
-
-        {/* Next Prayer Card */}
-        <Animated.View style={[styles.nextPrayerCard, { transform: [{ translateY: cardSlide }], opacity: headerFade }]}>
-          <LinearGradient
-            colors={['#0F4D3A', '#0A3528']}
-            style={StyleSheet.absoluteFillObject}
+        </View>
+        <View style={styles.headerRight}>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
           />
-          <MaterialIcons name="mosque" size={120} color="rgba(255,255,255,0.06)" style={{ position: 'absolute', right: -10, top: 0 }} />
-          <View style={styles.nextPrayerContentRow}>
-            <View style={styles.nextPrayerGlass}>
-              <View>
-                <Text style={styles.nextPrayerLabel}>NEXT PRAYER</Text>
-                <Text style={styles.nextPrayerName}>{nextPrayer.next}</Text>
-                <Text style={styles.nextPrayerTime}>
-                  {formatTime(nextPrayer.nextTime)} · {countdownStr}
+          <HijriDateBadge hijri={hijri} />
+        </View>
+      </Animated.View>
+
+      {/* Intention Card */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('SetNiyyah')}
+        style={[styles.intentionCard, {
+          backgroundColor: 'rgba(230, 192, 104, 0.08)',
+          borderColor: 'rgba(230, 192, 104, 0.2)',
+          borderLeftColor: '#E6C068',
+        }]}
+      >
+        <View style={styles.intentionIconBox}>
+          <MaterialIcons name="auto-awesome" size={20} color="#C9A23F" />
+        </View>
+        <View style={styles.intentionTextContainer}>
+          {todayNiyyah ? (
+            <>
+              <Text style={[styles.intentionTitle, { color: theme.textPrimary }]}>Your intention today:</Text>
+              <Text style={[styles.intentionSubtitle, { color: 'rgba(230, 192, 104, 0.7)' }]} numberOfLines={1}>"{todayNiyyah}"</Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.intentionTitle, { color: theme.textPrimary }]}>Set your intention for today</Text>
+              <Text style={[styles.intentionSubtitle, { color: 'rgba(230, 192, 104, 0.7)' }]}>Align your actions with purpose</Text>
+            </>
+          )}
+        </View>
+        <MaterialIcons name={todayNiyyah ? "edit" : "chevron-right"} size={22} color="#9CA3AF" />
+      </TouchableOpacity>
+
+      {/* Next Prayer Card */}
+      <Animated.View style={[styles.nextPrayerCard, { transform: [{ translateY: cardSlide }], opacity: headerFade }]}>
+        <LinearGradient
+          colors={['#0F5543', '#0A3D2E', '#072E20']}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <MaterialIcons name="mosque" size={120} color="rgba(255,255,255,0.06)" style={{ position: 'absolute', right: -10, top: 0 }} />
+        <View style={styles.nextPrayerContentRow}>
+          <View style={styles.nextPrayerGlass}>
+            <View>
+              <Text style={styles.nextPrayerLabel}>NEXT PRAYER</Text>
+              <Text style={styles.nextPrayerName}>{nextPrayer.next}</Text>
+              <Text style={styles.nextPrayerTime}>
+                {formatTime(nextPrayer.nextTime)} · {countdownStr}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AdhanSettings')}
+              style={[
+                styles.setReminderBtn,
+                adhanSettings.masterEnabled && styles.setReminderBtnActive,
+              ]}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons
+                name={adhanSettings.masterEnabled ? 'notifications-active' : 'notifications-none'}
+                size={14}
+                color={adhanSettings.masterEnabled ? Colors.primary : '#1a0f00'}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[
+                styles.setReminderText,
+                adhanSettings.masterEnabled && styles.setReminderTextActive,
+              ]}>
+                {adhanSettings.masterEnabled ? 'Active' : 'Set Reminder'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        {[
+          { icon: 'menu-book', label: 'Quran', screen: 'Root', params: { screen: 'QuranTab' } },
+          { icon: 'volunteer-activism', label: 'Duas', screen: 'Root', params: { screen: 'DuasTab' } },
+          { icon: 'explore', label: 'Qibla', screen: 'Qibla' },
+          { icon: 'self-improvement', label: 'Dhikr', screen: 'Dhikr' },
+          { icon: 'spa', label: 'Sukoon', screen: 'Sukoon' },
+        ].map((a) => {
+          const btnSize = (width - 32 - 32) / 5; // total width - screen padding - gaps
+          return (
+            <HapticButton
+              key={a.label}
+              onPress={() => {
+                if (a.params) {
+                  navigation.navigate(a.screen as any, a.params);
+                } else {
+                  navigation.navigate(a.screen as any);
+                }
+              }}
+              style={{ width: btnSize }}
+            >
+              <View style={{
+                width: btnSize,
+                height: btnSize,
+                borderRadius: 16,
+                backgroundColor: darkMode ? 'rgba(15, 80, 58, 0.95)' : Colors.primary,
+                borderWidth: 1,
+                borderColor: darkMode ? 'rgba(154, 236, 213, 0.22)' : 'rgba(255,255,255,0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}>
+                <MaterialIcons name={a.icon as any} size={22} color="#9aecd5" />
+                <Text style={{
+                  fontSize: 9.5,
+                  color: 'rgba(255,255,255,0.92)',
+                  fontWeight: '600',
+                  fontFamily: 'Manrope',
+                  letterSpacing: 0.2,
+                  textAlign: 'center',
+                }} numberOfLines={1}>
+                  {a.label}
                 </Text>
               </View>
-              <HapticButton
-                onPress={() => navigation.navigate('AdhanSettings')}
-                style={styles.setReminderBtn}
-              >
-                <Text style={styles.setReminderText}>Set Reminder</Text>
-              </HapticButton>
-            </View>
-          </View>
-        </Animated.View>
+            </HapticButton>
+          );
+        })}
+      </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          {[
-            { icon: 'menu-book', label: 'Quran', screen: 'Root', params: { screen: 'QuranTab' } },
-            { icon: 'volunteer-activism', label: 'Duas', screen: 'Root', params: { screen: 'DuasTab' } },
-            { icon: 'explore', label: 'Qibla', screen: 'Qibla' },
-            { icon: 'self-improvement', label: 'Dhikr', screen: 'Dhikr' },
-            { icon: 'spa', label: 'Sukoon', screen: 'Sukoon' },
-          ].map((a) => {
-            const btnSize = (width - 32 - 32) / 5; // total width - screen padding - gaps
+      {/* Habit Tracker */}
+      <View style={[styles.habitCard, {
+        backgroundColor: darkMode ? 'rgba(15, 80, 58, 0.45)' : '#ffffff',
+        borderColor: darkMode ? 'rgba(154, 236, 213, 0.14)' : 'rgba(0,0,0,0.06)',
+      }]}>
+        <Text style={[styles.sectionTitle, { color: darkMode ? '#a8f0de' : Colors.primary }]}>Today's Salah</Text>
+        <View style={styles.habitRow}>
+          {PRAYERS.map((p) => {
+            const status = prayerStatuses[p];
+            const isLocked = !isPrayerUnlocked(p);
+            const isDone = status === 'done';
+
             return (
               <HapticButton
-                key={a.label}
+                key={p}
                 onPress={() => {
-                  if (a.params) {
-                    navigation.navigate(a.screen as any, a.params);
-                  } else {
-                    navigation.navigate(a.screen as any);
-                  }
+                  if (isLocked) return; // silently block future prayers
+                  handlePrayerDone(p);
                 }}
-                style={{ width: btnSize }}
+                style={[styles.habitItem, isLocked && { opacity: 0.6 }]}
+                hapticType="medium"
               >
-                <View style={{
-                  width: btnSize,
-                  height: btnSize,
-                  borderRadius: 16,
-                  backgroundColor: 'rgba(10, 53, 40, 0.88)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(154, 236, 213, 0.15)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}>
-                  <MaterialIcons name={a.icon as any} size={22} color="#9aecd5" />
-                  <Text style={{
-                    fontSize: 9.5,
-                    color: 'rgba(255,255,255,0.82)',
-                    fontWeight: '600',
-                    fontFamily: 'Manrope',
-                    letterSpacing: 0.2,
-                    textAlign: 'center',
-                  }} numberOfLines={1}>
-                    {a.label}
-                  </Text>
+                <View
+                  style={[
+                    styles.habitCircle,
+                    {
+                      borderColor: isDone
+                        ? '#0F5132'
+                        : isLocked
+                          ? darkMode ? 'rgba(168, 240, 222, 0.6)' : '#9CA3AF'
+                          : p === nextPrayer?.next
+                            ? Colors.primary
+                            : darkMode ? '#9CA3AF' : '#6B7280',
+                      backgroundColor: isDone
+                        ? '#0F5132'
+                        : isLocked
+                          ? darkMode ? 'rgba(168, 240, 222, 0.06)' : '#F3F4F6'
+                          : p === nextPrayer?.next
+                            ? darkMode ? 'rgba(15, 109, 91, 0.12)' : 'rgba(15, 109, 91, 0.08)'
+                            : darkMode ? 'rgba(156, 163, 175, 0.15)' : '#F3F4F6',
+                    },
+                  ]}
+                >
+                  {isDone ? (
+                    <MaterialIcons name="check" size={20} color="#fff" />
+                  ) : isLocked ? (
+                    <MaterialIcons name="lock" size={16} color={darkMode ? 'rgba(168, 240, 222, 0.8)' : '#9CA3AF'} />
+                  ) : (
+                    <MaterialIcons
+                      name={PrayerIcons[p.toLowerCase() as keyof typeof PrayerIcons] as any}
+                      size={20}
+                      color={p === nextPrayer?.next ? Colors.primary : darkMode ? '#9CA3AF' : '#4B5563'}
+                    />
+                  )}
                 </View>
+                <Text style={[styles.habitLabel, { color: darkMode ? 'rgba(255,255,255,0.6)' : Colors.textMuted }, isLocked && { color: darkMode ? 'rgba(168, 240, 222, 0.6)' : 'rgba(0,0,0,0.3)' }]}>
+                  {p.substring(0, 3)}
+                </Text>
               </HapticButton>
             );
           })}
         </View>
-
-        {/* Habit Tracker */}
-        <View style={[styles.habitCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-          <Text style={[styles.sectionTitle, { color: theme.sectionTitle }]}>Today's Salah</Text>
-          <View style={styles.habitRow}>
-            {PRAYERS.map((p) => {
-              const status = prayerStatuses[p];
-              const isLocked = !isPrayerUnlocked(p);
-              const isDone = status === 'done';
-
-              return (
-                <HapticButton
-                  key={p}
-                  onPress={() => {
-                    if (isLocked) return; // silently block future prayers
-                    handlePrayerDone(p);
-                  }}
-                  style={[styles.habitItem, isLocked && { opacity: 0.35 }]}
-                  hapticType="medium"
-                >
-                  <View
-                    style={[
-                      styles.habitCircle,
-                      {
-                        borderColor: isDone
-                          ? '#0F5132'
-                          : isLocked
-                          ? '#E5E7EB'
-                          : p === nextPrayer?.next
-                          ? Colors.primary
-                          : '#E5E7EB',
-                        backgroundColor: isDone ? '#0F5132' : 'transparent',
-                      },
-                    ]}
-                  >
-                    {isDone ? (
-                      <MaterialIcons name="check" size={20} color="#fff" />
-                    ) : isLocked ? (
-                      <MaterialIcons name="lock" size={16} color="#C0C0C0" />
-                    ) : (
-                      <MaterialIcons
-                        name={PrayerIcons[p.toLowerCase() as keyof typeof PrayerIcons] as any}
-                        size={20}
-                        color={p === nextPrayer?.next ? Colors.primary : '#E5E7EB'}
-                      />
-                    )}
-                  </View>
-                  <Text style={[styles.habitLabel, { color: theme.textMuted }, isLocked && { color: '#C0C0C0' }]}>
-                    {p.substring(0, 3)}
-                  </Text>
-                </HapticButton>
-              );
-            })}
-          </View>
-          <Text style={[styles.motivationText, { color: theme.textMuted }]}>
-            {donePrayers === 0
-              ? 'Begin your day with Fajr.'
-              : donePrayers < 3
+        <Text style={[styles.motivationText, { color: darkMode ? 'rgba(255,255,255,0.7)' : Colors.textMuted }]}>
+          {donePrayers === 0
+            ? 'Begin your day with Fajr.'
+            : donePrayers < 3
               ? `${donePrayers} of 5 done. Keep going!`
               : donePrayers < 5
-              ? 'More than halfway there today.'
-              : 'All prayers complete. Alhamdulillah.'}
-          </Text>
-        </View>
+                ? 'More than halfway there today.'
+                : 'All prayers complete. Alhamdulillah.'}
+        </Text>
+      </View>
 
-        {/* 1 Minute for Allah */}
-        <HapticButton
-          onPress={() => navigation.navigate('OneMinute')}
-          style={styles.oneMinuteBtn}
-          hapticType="medium"
-        >
-          <LinearGradient colors={['#E6C068', '#C9A23F']} style={styles.oneMinuteGradient}>
-            <Text style={styles.oneMinuteText}><MaterialIcons name="auto-awesome" size={18} color="#fff" />  1 Minute for Allah</Text>
-          </LinearGradient>
-        </HapticButton>
+      {/* 1 Minute for Allah */}
+      <HapticButton
+        onPress={() => navigation.navigate('OneMinute')}
+        style={styles.oneMinuteBtn}
+        hapticType="medium"
+      >
+        <LinearGradient colors={['#E6C068', '#C9A23F']} style={styles.oneMinuteGradient}>
+          <Text style={styles.oneMinuteText}><MaterialIcons name="auto-awesome" size={18} color="#fff" />  1 Minute for Allah</Text>
+        </LinearGradient>
+      </HapticButton>
 
-        {/* Daily Ayah */}
-        <View style={[styles.ayahCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-          <Text style={[styles.ayahArabic, { color: darkMode ? '#9aecd5' : '#0F5132' }]}>{dailyAyah.arabic}</Text>
-          <Text style={[styles.ayahTranslation, { color: theme.textSecondary }]}>{dailyAyah.translation}</Text>
-          <Text style={styles.ayahReference}>{dailyAyah.reference}</Text>
-        </View>
+      {/* Daily Ayah */}
+      <View style={[styles.ayahCard, {
+        backgroundColor: darkMode ? 'rgba(15, 80, 58, 0.45)' : '#ffffff',
+        borderColor: darkMode ? 'rgba(154, 236, 213, 0.14)' : 'rgba(0,0,0,0.06)',
+      }]}>
+        <Text style={[styles.ayahArabic, { color: darkMode ? '#9aecd5' : '#0F5132' }]}>{dailyAyah.arabic}</Text>
+        <Text style={[styles.ayahTranslation, { color: theme.textSecondary }]}>{dailyAyah.translation}</Text>
+        <Text style={styles.ayahReference}>{dailyAyah.reference}</Text>
+      </View>
 
-        {/* Prayer Times List */}
-        <View style={[styles.prayerListCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-          <Text style={[styles.sectionTitle, { color: theme.sectionTitle }]}>Prayer Times</Text>
-          {PRAYERS.map((p) => {
-            const timeKey = p as keyof typeof prayerTimes;
-            const time = prayerTimes[timeKey] as string;
-            const isNext = nextPrayer.next === p;
-            const bellOn = adhanSettings.prayers[p]?.enabled && adhanSettings.masterEnabled;
-            return (
-              <View
-                key={p}
-                style={[
-                  styles.prayerRow,
-                  isNext && styles.prayerRowActive,
-                ]}
+      {/* Prayer Times List */}
+      <View style={[styles.prayerListCard, {
+        backgroundColor: darkMode ? 'rgba(15, 80, 58, 0.45)' : '#ffffff',
+        borderColor: darkMode ? 'rgba(154, 236, 213, 0.14)' : 'rgba(0,0,0,0.06)',
+      }]}>
+        <Text style={[styles.sectionTitle, { color: darkMode ? '#a8f0de' : Colors.primary }]}>Prayer Times</Text>
+        {PRAYERS.map((p) => {
+          const timeKey = p as keyof typeof prayerTimes;
+          const time = prayerTimes[timeKey] as string;
+          const isNext = nextPrayer.next === p;
+          const bellOn = adhanSettings.prayers[p]?.enabled && adhanSettings.masterEnabled;
+          return (
+            <View
+              key={p}
+              style={[
+                styles.prayerRow,
+                isNext && styles.prayerRowActive,
+              ]}
+            >
+              <MaterialIcons name={PrayerIcons[p.toLowerCase() as keyof typeof PrayerIcons] as any} size={16} color={isNext ? '#0F5132' : '#6B7280'} />
+              <Text style={[styles.prayerRowName, { color: darkMode ? 'rgba(255,255,255,0.9)' : Colors.textDark }, isNext && { color: '#E6C068', fontWeight: Typography.weights.bold }]}>{p}</Text>
+              <Text style={[styles.prayerRowTime, { color: darkMode ? 'rgba(255,255,255,0.65)' : Colors.textMuted }, isNext && { color: '#E6C068' }]}>{formatTime(time)}</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('AdhanSettings')}
+                style={styles.bellBtn}
               >
-                <MaterialIcons name={PrayerIcons[p.toLowerCase() as keyof typeof PrayerIcons] as any} size={16} color={isNext ? '#0F5132' : '#6B7280'} />
-                <Text style={[styles.prayerRowName, { color: theme.textSecondary }, isNext && { color: '#0F5132', fontWeight: Typography.weights.bold }]}>{p}</Text>
-                <Text style={[styles.prayerRowTime, { color: theme.textMuted }, isNext && { color: '#C9A23F' }]}>{formatTime(time)}</Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('AdhanSettings')}
-                  style={styles.bellBtn}
-                >
-                  <MaterialIcons name={bellOn ? 'notifications-active' : 'notifications-off'} size={18} color={bellOn ? Colors.primary : '#9CA3AF'} />
-                </TouchableOpacity>
-              </View>
+                <MaterialIcons name={bellOn ? 'notifications-active' : 'notifications-off'} size={18} color={bellOn ? Colors.primary : '#9CA3AF'} />
+              </TouchableOpacity>
+            </View>
           );
         })}
       </View>
@@ -540,7 +571,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 18, color: '#1F3D2B', fontWeight: Typography.weights.bold },
   nameBlock: { flex: 1 },
   greetingText: { fontSize: Typography.sizes.md, color: Colors.textDark, fontWeight: Typography.weights.semibold },
-  timeText: { fontSize: Typography.sizes.sm, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
+  timeText: { fontSize: Typography.sizes.sm, color: 'rgba(255, 255, 255, 0.7)', marginTop: 2 },
   headerRight: { alignItems: 'flex-end', gap: 4 },
   headerLogo: { width: 28, height: 28, borderRadius: 7 },
 
@@ -605,14 +636,25 @@ const styles = StyleSheet.create({
   nextPrayerTime: { fontFamily: 'Plus Jakarta Sans', fontSize: Typography.sizes.lg, color: 'rgba(255,255,255,0.9)' },
   setReminderBtn: {
     alignSelf: 'flex-end',
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E6C068',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: BorderRadius.md,
-    ...Shadows.gold,
   },
-  setReminderText: { fontSize: 12, color: Colors.primary, fontWeight: '700', fontFamily: 'Plus Jakarta Sans' },
-
+  setReminderText: { fontSize: 12, color: '#1a0f00', fontWeight: '700', fontFamily: 'Plus Jakarta Sans' },
+  setReminderBtnActive: {
+    backgroundColor: 'rgba(15,109,91,0.15)',
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  setReminderTextActive: {
+    color: Colors.primary,
+  },
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -625,14 +667,12 @@ const styles = StyleSheet.create({
 
 
   habitCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 24,
     padding: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(154,236,213,0.12)',
   },
-  sectionTitle: { fontSize: 16, color: '#9aecd5', fontWeight: '800', marginBottom: Spacing.md },
+  sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: Spacing.md },
   habitRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
   habitItem: { alignItems: 'center', gap: 6 },
   habitCircle: {
@@ -653,12 +693,10 @@ const styles = StyleSheet.create({
   oneMinuteText: { fontSize: Typography.sizes.md, color: '#fff', fontWeight: Typography.weights.bold, letterSpacing: 0.5 },
 
   ayahCard: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 24,
     padding: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(154,236,213,0.12)',
     alignItems: 'flex-end',
   },
   ayahArabic: {
@@ -680,12 +718,10 @@ const styles = StyleSheet.create({
   ayahReference: { fontSize: Typography.sizes.xs, color: '#E6C068', alignSelf: 'flex-start' },
 
   prayerListCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 24,
     padding: 20,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(154,236,213,0.12)',
   },
   prayerRow: {
     flexDirection: 'row',
@@ -696,9 +732,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
   },
   prayerRowActive: {
-    backgroundColor: 'rgba(15,109,91,0.08)',
+    backgroundColor: 'rgba(230, 192, 104, 0.1)',
     borderLeftWidth: 3,
-    borderLeftColor: '#0F5132',
+    borderLeftColor: '#E6C068',
+    borderRadius: 8,
   },
   prayerRowIcon: { fontSize: 16 },
   prayerRowName: { flex: 1, fontSize: Typography.sizes.md, color: 'rgba(255,255,255,0.85)', fontWeight: Typography.weights.medium },

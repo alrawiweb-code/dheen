@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Animated,
+  Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,6 +49,23 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
   const [alertPreviewMode, setAlertPreviewMode] = useState<string | null>(null);
   const [downloadedVoices, setDownloadedVoices] = useState<Record<string, boolean>>({});
 
+  const [showSavedToast, setShowSavedToast] = useState(false);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = () => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    setShowSavedToast(true);
+    Animated.sequence([
+      Animated.timing(toastAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.delay(2000),
+      Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => {
+      setShowSavedToast(false);
+    });
+    toastTimeout.current = setTimeout(() => setShowSavedToast(false), 2800);
+  };
+
   useEffect(() => {
     const checkCache = async () => {
       const statuses = await Promise.all(
@@ -69,7 +88,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
     );
   };
 
-  const resync = () => syncPrayerNotifications().catch(() => {});
+  const resync = (force = false) => syncPrayerNotifications(force).catch(() => {});
 
   const bottomInset = useScreenBottomInset(false);
 
@@ -79,6 +98,27 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
   return (
     <ScreenWrapper>
+      {/* ── Success Toast ── */}
+      {showSavedToast && (
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              opacity: toastAnim,
+              transform: [{
+                translateY: toastAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-20, 0],
+                }),
+              }],
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <MaterialIcons name="check-circle" size={18} color="#fff" />
+          <Text style={styles.toastText}>Adhan settings saved successfully</Text>
+        </Animated.View>
+      )}
       {/* Header */}
       <View>
         <View style={[styles.header, { backgroundColor: darkMode ? 'transparent' : 'rgba(251,249,244,0.97)' }]}>
@@ -133,7 +173,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
             value={adhanSettings.masterEnabled}
             onValueChange={(val) => {
               // 1. Optimistic update to keep UI responsive
-              updateAdhanSettings({ masterEnabled: val });
+              updateAdhanSettings({ masterEnabled: val, setupCompleted: val });
               
               // 2. Perform async OS interaction cleanly
               setTimeout(async () => {
@@ -142,21 +182,31 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                     const granted = await requestNotificationPermissions();
                     if (!granted) {
                       Alert.alert('Permissions Required', 'Please enable notifications in your device settings.');
-                      updateAdhanSettings({ masterEnabled: false });
+                      updateAdhanSettings({ masterEnabled: false, setupCompleted: false });
                       return;
                     }
                   } catch (e) {
-                    updateAdhanSettings({ masterEnabled: false });
+                    updateAdhanSettings({ masterEnabled: false, setupCompleted: false });
                     return;
                   }
                 }
-                await resync();
+                await resync(true);
               }, 50);
             }}
             trackColor={{ false: '#eae8e3', true: Colors.primary }}
             thumbColor="#fff"
           />
         </View>
+
+        {/* Battery Optimization Info */}
+        {adhanSettings.masterEnabled && Platform.OS === 'android' && (
+          <View style={[styles.infoCard, { backgroundColor: darkMode ? 'rgba(234, 179, 8, 0.1)' : '#FEF9C3' }]}>
+            <MaterialIcons name="info-outline" size={20} color={darkMode ? '#FDE047' : '#CA8A04'} style={{ marginTop: 2 }} />
+            <Text style={[styles.infoText, { color: darkMode ? '#FDE047' : '#854D0E' }]}>
+              If Adhan is delayed, please go to your device Settings and turn off Battery Optimization for Muslim Go Plus.
+            </Text>
+          </View>
+        )}
 
         {/* ── Auto-Location ── */}
         <Text style={styles.sectionLabel}>PRAYER TIME LOCATION</Text>
@@ -185,7 +235,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                       return;
                     }
                   }
-                  await resync();
+                  await resync(true);
                 }, 50);
               }}
               trackColor={{ false: '#eae8e3', true: Colors.primary }}
@@ -201,7 +251,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                 placeholderTextColor={darkMode ? 'rgba(255,255,255,0.3)' : Colors.textMuted}
                 value={profile.city}
                 onChangeText={(city) => setProfile({ city })}
-                onBlur={resync}
+                onBlur={() => resync(true)}
               />
               <TextInput
                 style={[styles.locationInput, darkMode && styles.locationInputDark]}
@@ -209,7 +259,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                 placeholderTextColor={darkMode ? 'rgba(255,255,255,0.3)' : Colors.textMuted}
                 value={profile.country}
                 onChangeText={(country) => setProfile({ country })}
-                onBlur={resync}
+                onBlur={() => resync(true)}
               />
             </View>
           )}
@@ -405,8 +455,12 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           style={styles.saveBtn}
           activeOpacity={0.85}
           onPress={async () => {
-            await resync();
-            navigation.goBack();
+            updateAdhanSettings({ 
+              setupCompleted: adhanSettings.masterEnabled,
+            });
+            await resync(true);
+            showToast();
+            setTimeout(() => navigation.goBack(), 1800);
           }}
         >
           <LinearGradient colors={[Colors.primary, '#0f6d5b']} style={StyleSheet.absoluteFillObject} />
@@ -418,6 +472,32 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  toast: {
+    position: 'absolute',
+    top: 60,
+    left: 24,
+    right: 24,
+    zIndex: 999,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toastText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    flex: 1,
+  },
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -553,4 +633,18 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20,
   },
   saveBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: '700', color: '#fff' },
+  infoCard: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    gap: 8,
+  },
+  infoText: {
+    flex: 1,
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: Typography.sizes.sm,
+    lineHeight: 18,
+  },
 });

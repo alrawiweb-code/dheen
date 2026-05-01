@@ -28,12 +28,27 @@ const PRAYERS_META = [
   { id: 'Isha', icon: 'nights-stay' },
 ] as const;
 
+const PRAYER_ACCENTS = {
+  Fajr:    { color: '#7EC8E3', label: 'DAWN' },
+  Dhuhr:   { color: '#E6C068', label: 'NOON' },
+  Asr:     { color: '#a8f0de', label: 'AFTERNOON' },
+  Maghrib: { color: '#FF8C69', label: 'SUNSET' },
+  Isha:    { color: '#B39DDB', label: 'NIGHT' },
+};
+
 export const PrayersScreen = () => {
   const navigation = useNavigation<any>();
   const profile = useAppStore(state => state.profile);
   const prayerStatuses = useAppStore(state => state.prayerStatuses);
   const setPrayerStatus = useAppStore(state => state.setPrayerStatus);
   const darkMode = useAppStore(state => state.darkMode);
+  const cardBg      = darkMode ? 'rgba(15, 80, 58, 0.45)'  : '#f5f3ee';
+  const cardBorder  = darkMode ? 'rgba(154, 236, 213, 0.14)': 'transparent';
+  const textPrimary = darkMode ? '#ffffff'                  : Colors.textDark;
+  const textMuted   = darkMode ? 'rgba(255,255,255,0.55)'   : Colors.textMuted;
+  const iconBg      = darkMode ? 'rgba(154,236,213,0.08)'   : 'rgba(0,83,68,0.05)';
+  const iconBgActive= darkMode ? 'rgba(154,236,213,0.15)'   : 'rgba(0,83,68,0.1)';
+  const surfaceBtn  = darkMode ? 'rgba(255,255,255,0.07)'   : '#fff';
   const [prayerTimes, setPrayerTimes] = useState(FALLBACK_TIMES);
   const [hijri, setHijri] = useState(FALLBACK_HIJRI);
   const [loading, setLoading] = useState(true);
@@ -101,7 +116,7 @@ export const PrayersScreen = () => {
         {/* Hero Card */}
         <View style={styles.heroCard}>
           <LinearGradient
-            colors={[Colors.primary, '#0f6d5b']}
+            colors={['#0F5543', '#0A3D2E']}
             style={StyleSheet.absoluteFillObject}
           />
           <MaterialIcons 
@@ -141,11 +156,11 @@ export const PrayersScreen = () => {
 
         {/* Today's Prayers List */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Today's Prayers</Text>
+          <Text style={[styles.sectionTitle, { color: darkMode ? '#a8f0de' : Colors.primary }]}>Today's Prayers</Text>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.primary} />
           ) : (
-            <Text style={styles.sectionDateLabel}>{prayerTimes.date}</Text>
+            <Text style={[styles.sectionDateLabel, { color: textMuted }]}>{prayerTimes.date}</Text>
           )}
         </View>
 
@@ -156,14 +171,27 @@ export const PrayersScreen = () => {
             const isLocked = !isPrayerUnlocked(prayer.id);
             const isDone = status === 'done';
             const isNext = nextPrayer.next === prayer.id;
+            const accent = PRAYER_ACCENTS[prayer.id];
 
             return (
               <TouchableOpacity
                 key={prayer.id}
                 style={[
                   styles.prayerItem,
+                  {
+                    backgroundColor: cardBg,
+                    borderWidth: 1,
+                    borderColor: cardBorder,
+                    borderLeftWidth: darkMode ? 3 : 1,
+                    borderLeftColor: darkMode ? `${accent.color}60` : cardBorder,
+                  },
                   isNext && !isDone && styles.prayerItemUpcoming,
-                  isLocked && { opacity: 0.4 },
+                  isNext && !isDone && darkMode && {
+                    backgroundColor: `${accent.color}12`,
+                    borderColor: `${accent.color}40`,
+                    borderLeftColor: accent.color,
+                  },
+                  isLocked && { opacity: 0.35 },
                 ]}
                 onPress={() => {
                   if (isLocked) return; // block future prayers
@@ -176,16 +204,48 @@ export const PrayersScreen = () => {
                 activeOpacity={isLocked ? 1 : 0.7}
               >
                 <View style={styles.prayerItemLeft}>
-                  <View style={[styles.prayerIconBox, isNext && !isDone && styles.prayerIconBoxActive]}>
+                  <View style={[
+                    styles.prayerIconBox,
+                    {
+                      backgroundColor: darkMode
+                        ? `${accent.color}18`
+                        : 'rgba(0,83,68,0.05)',
+                    },
+                    isNext && !isDone && {
+                      backgroundColor: darkMode
+                        ? `${accent.color}28`
+                        : 'rgba(0,83,68,0.1)',
+                    },
+                  ]}>
                     <MaterialIcons
                       name={isLocked ? 'lock' : prayer.icon as any}
                       size={24}
-                      color={isDone ? Colors.primary : isNext ? Colors.primary : Colors.textMuted}
+                      color={
+                        isDone    ? Colors.primary :
+                        isLocked  ? (darkMode ? 'rgba(168,240,222,0.4)' : Colors.textMuted) :
+                                    (darkMode ? accent.color : Colors.primary)
+                      }
                     />
                   </View>
                   <View>
-                    <Text style={styles.prayerName}>{prayer.id}</Text>
-                    <Text style={styles.prayerTime}>{formatTime(timeStr)}</Text>
+                    <Text style={[styles.prayerName, { color: textPrimary }]}>{prayer.id}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.prayerTime, { color: textMuted }]}>
+                        {formatTime(timeStr)}
+                      </Text>
+                      {darkMode && !isLocked && (
+                        <Text style={{
+                          fontSize: 9,
+                          fontWeight: '700',
+                          fontFamily: 'Plus Jakarta Sans',
+                          color: accent.color,
+                          opacity: 0.7,
+                          letterSpacing: 1,
+                        }}>
+                          {accent.label}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 </View>
 
@@ -196,7 +256,7 @@ export const PrayersScreen = () => {
                       <Text style={styles.doneBadgeText}>Done</Text>
                     </View>
                   ) : isLocked ? (
-                    <MaterialIcons name="hourglass-top" size={20} color={Colors.textMuted} />
+                    <MaterialIcons name="hourglass-top" size={20} color={darkMode ? 'rgba(168,240,222,0.5)' : Colors.textMuted} />
                   ) : (
                     <MaterialIcons name="radio-button-unchecked" size={24} color={Colors.primary} />
                   )}
@@ -207,19 +267,23 @@ export const PrayersScreen = () => {
         </View>
 
         {/* Qibla Direction */}
-        <View style={styles.qiblaCard}>
+        <View style={[styles.qiblaCard, {
+          backgroundColor: cardBg,
+          borderWidth: 1,
+          borderColor: cardBorder,
+        }]}>
           <View style={styles.qiblaWidgetBg1} />
           <View style={styles.qiblaWidgetBg2} />
 
           {/* Top row — text + compass */}
           <View style={styles.qiblaTopRow}>
             <View style={{ flex: 1, zIndex: 10 }}>
-              <Text style={styles.bentoTitle}>Qibla Direction</Text>
-              <Text style={styles.bentoDesc}>
+              <Text style={[styles.bentoTitle, { color: darkMode ? '#a8f0de' : Colors.primary }]}>Qibla Direction</Text>
+              <Text style={[styles.bentoDesc, { color: textMuted }]}>
                 Find the direction of the Holy Kaaba from your current location.
               </Text>
             </View>
-            <View style={styles.compassRing}>
+            <View style={[styles.compassRing, { backgroundColor: surfaceBtn }]}>
               <View style={styles.compassInner}>
                 <MaterialIcons
                   name="navigation"
@@ -234,15 +298,19 @@ export const PrayersScreen = () => {
 
           {/* Degrees */}
           <Text style={styles.qiblaDegrees}>292° NW</Text>
-          <Text style={styles.qiblaLocation}>Mecca, SA</Text>
+          <Text style={[styles.qiblaLocation, { color: textMuted }]}>Mecca, SA</Text>
 
           {/* Button */}
           <TouchableOpacity
-            style={styles.fullCompassBtn}
+            style={[styles.fullCompassBtn, {
+              backgroundColor: darkMode ? 'rgba(154,236,213,0.1)' : '#fff',
+              elevation: 0,
+              shadowOpacity: 0,
+            }]}
             onPress={() => navigation.navigate('Qibla')}
           >
-            <MaterialIcons name="explore" size={20} color={Colors.primary} />
-            <Text style={styles.fullCompassBtnText}>Open Full Compass</Text>
+            <MaterialIcons name="explore" size={20} color={darkMode ? '#a8f0de' : Colors.primary} />
+            <Text style={[styles.fullCompassBtnText, { color: darkMode ? '#a8f0de' : Colors.primary }]}>Open Full Compass</Text>
           </TouchableOpacity>
         </View>
 
@@ -439,12 +507,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#ba1a1a',
   },
   fullCompassBtn: {
-    backgroundColor: '#fff',
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', paddingVertical: 14,
     borderRadius: 12, gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08, shadowRadius: 10, elevation: 2,
   },
   fullCompassBtnText: {
     color: Colors.primary, fontSize: 15,

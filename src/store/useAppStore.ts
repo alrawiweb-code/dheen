@@ -18,6 +18,7 @@ export interface AdhanPrayerSettings {
 }
 
 export interface AdhanSettings {
+  setupCompleted: boolean;
   masterEnabled: boolean;
   prayers: Record<Prayer, AdhanPrayerSettings>;
   quietHoursEnabled: boolean;
@@ -97,6 +98,16 @@ export interface AppState {
   sukoonEntries: SukoonEntry[];
   addSukoonEntry: (entry: Omit<SukoonEntry, 'id'>) => void;
 
+  // Dhikr
+  dhikr: {
+    count: number;
+    totalCount: number;
+    cycleCount: number;
+    target: number;
+  };
+  setDhikrState: (patch: Partial<AppState['dhikr']>) => void;
+  resetDhikr: () => void;
+
   // Milestones
   milestones: {
     fajrCount: number;
@@ -122,7 +133,8 @@ const defaultAdhanPrayerSettings: AdhanPrayerSettings = {
 };
 
 const defaultAdhanSettings: AdhanSettings = {
-  masterEnabled: true,
+  setupCompleted: false,
+  masterEnabled: false,
   prayers: {
     Fajr: { ...defaultAdhanPrayerSettings, fajrPhrase: true },
     Dhuhr: { ...defaultAdhanPrayerSettings },
@@ -304,6 +316,17 @@ export const useAppStore = create<AppState>()(
       ].slice(0, 200),
     })),
 
+  dhikr: {
+    count: 0,
+    totalCount: 0,
+    cycleCount: 0,
+    target: 33,
+  },
+  setDhikrState: (patch) =>
+    set((state) => ({ dhikr: { ...state.dhikr, ...patch } })),
+  resetDhikr: () =>
+    set({ dhikr: { count: 0, totalCount: 0, cycleCount: 0, target: 33 } }),
+
   milestones: {
     fajrCount: 0,
     quranDays: 0,
@@ -353,15 +376,16 @@ export const useAppStore = create<AppState>()(
     {
       name: 'dheen-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 7,
+      version: 8,
       partialize: (state) => {
         const { isAdhanPlaying, ...rest } = state;
         return rest;
       },
       migrate: (persistedState: any, _version: number) => {
+        let state = persistedState;
         if (_version < 7) {
-          return {
-            ...persistedState,
+          state = {
+            ...state,
             milestones: {
               fajrCount: 0,
               quranDays: 0,
@@ -376,7 +400,13 @@ export const useAppStore = create<AppState>()(
             },
           };
         }
-        return persistedState;
+        if (_version < 8) {
+          state = {
+            ...state,
+            dhikr: { count: 0, totalCount: 0, cycleCount: 0, target: 33 },
+          };
+        }
+        return state;
       },
     }
   )

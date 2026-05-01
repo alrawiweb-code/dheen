@@ -48,11 +48,11 @@ export const SplashScreen = ({ navigation }: any) => {
     const checkOnboarding = async () => {
       // Minimum duration of 2 seconds
       const startTime = Date.now();
-      
+
       try {
         const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
         const userName = await AsyncStorage.getItem('userName');
-        
+
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(2000 - elapsedTime, 0);
 
@@ -84,28 +84,29 @@ export const SplashScreen = ({ navigation }: any) => {
   return (
     <Animated.View style={[styles.container, { opacity: screenOpacity }]}>
       <StatusBar barStyle="light-content" backgroundColor="#0A3D2B" />
-      
+
       <View style={styles.content}>
         {/* Logo */}
-        <Animated.View 
+        <Animated.View
           style={[
-            styles.logoContainer, 
-            { 
+            styles.logoContainer,
+            {
               opacity: logoOpacity,
               transform: [{ scale: logoScale }]
             }
           ]}
         >
-          <Image 
-            source={require('../../assets/icon.png')} 
-            style={styles.logoImage} 
-            resizeMode="contain" 
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
           />
         </Animated.View>
 
         {/* App Name */}
         <Animated.View style={[styles.textContainer, { opacity: textOpacity }]}>
-          <Text style={styles.appName}>Deen Islam</Text>
+          {/* <Text style={styles.appName}>Muslim Go Plus</Text> */}
+          <Text style={styles.tagline}>Spiritual clarity, every day.</Text>
         </Animated.View>
       </View>
     </Animated.View>

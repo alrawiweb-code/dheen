@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Deen Islam",
+    "name": "Muslim Go Plus",
     "slug": "dheen-app",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,13 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#0F6D5B"
+          "color": "#0F6D5B",
+          "sounds": [
+            "./assets/adhan/azan_makkah.mp3",
+            "./assets/adhan/azan_madinah.mp3",
+            "./assets/adhan/azan_alaqsa.mp3",
+            "./assets/adhan/fajr_bank.mp3"
+          ]
         }
       ],
       "expo-sqlite"
@@ -29,7 +35,7 @@
         "backgroundColor": "#0A3D2B"
       },
       "package": "com.alrawi.muslimpro",
-      "versionCode": 4,
+      "versionCode": 7,
       "blockedPermissions": [
         "android.permission.ACTIVITY_RECOGNITION"
       ],
@@ -38,8 +44,9 @@
         "ACCESS_COARSE_LOCATION",
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "SCHEDULE_EXACT_ALARM",
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {

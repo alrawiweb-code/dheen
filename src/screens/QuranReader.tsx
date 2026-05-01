@@ -90,6 +90,12 @@ async function buildQueue(
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Arabic numeral converter ──────────────────────────────────────
+const toArabicNumeral = (n: number): string => {
+  const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return String(n).split('').map(d => arabicNumerals[parseInt(d)] ?? d).join('');
+};
+
 const AyahItem = React.memo(({
   item,
   isActive,
@@ -98,7 +104,8 @@ const AyahItem = React.memo(({
   currentProgress,
   onLongPress,
   onPress,
-  onLayout,
+  showTransliteration,
+  isStarred,
 }: {
   item: Ayah;
   isActive: boolean;
@@ -107,60 +114,84 @@ const AyahItem = React.memo(({
   currentProgress: number;
   onLongPress: (item: Ayah) => void;
   onPress: (item: Ayah) => void;
+  showTransliteration: boolean;
+  isStarred: boolean;
 }) => {
   return (
     <TouchableOpacity
       onLongPress={() => onLongPress(item)}
-      activeOpacity={0.88}
-      style={[styles.ayahBlock, isActive && styles.ayahBlockActive]}
+      onPress={() => onPress(item)}
+      activeOpacity={0.92}
+      style={[
+        styles.ayahBlock,
+        isActive && styles.ayahBlockActive,
+      ]}
     >
-      <View style={styles.ayahHeaderRow}>
-        <View style={styles.ayahNumCircle}>
-          <Text style={styles.ayahNum}>{item.numberInSurah}</Text>
-        </View>
+      {/* ── Arabic text block ── */}
+      <View style={styles.arabicBlock}>
+        <Text style={[styles.arabicText, isActive && styles.arabicTextActive]}>
+          {item.text}
+          {'  '}
+          <Text style={[styles.ayahMarker, isActive && styles.ayahMarkerActive]}>
+            {'﴿'}{toArabicNumeral(item.numberInSurah)}{'﴾'}
+          </Text>
+        </Text>
 
-        <TouchableOpacity
-          id={`audio-btn-${item.numberInSurah}`}
-          style={[styles.audioBtn, isActive && styles.audioBtnActive]}
-          onPress={() => onPress(item)}
-          activeOpacity={0.75}
-        >
+        {/* Active playback progress bar */}
+        {isActive && (
+          <View style={styles.miniProgressBg}>
+            <View style={[styles.miniProgressFill, { width: `${Math.round(currentProgress * 100)}%` as any }]} />
+          </View>
+        )}
+      </View>
+
+      {/* ── Transliteration (hidden by default) ── */}
+      {showTransliteration && item.transliteration ? (
+        <Text style={styles.transliterationText}>{item.transliteration}</Text>
+      ) : null}
+
+      {/* ── Translation row ── */}
+      <View style={styles.translationRow}>
+        <View style={[styles.ayahNumBadge, isActive && styles.ayahNumBadgeActive]}>
           {isLoadingThis ? (
             <ActivityIndicator size="small" color={isActive ? '#fff' : Colors.primary} />
           ) : (
-            <MaterialIcons
-              name={isThisPlaying ? 'pause' : 'play-arrow'}
-              size={20}
-              color={isActive ? '#fff' : Colors.primary}
-            />
+            <Text style={[styles.ayahNumBadgeText, isActive && styles.ayahNumBadgeTextActive]}>
+              {item.numberInSurah}
+            </Text>
           )}
-        </TouchableOpacity>
+        </View>
+
+        <Text style={[styles.translationText, isActive && styles.translationTextActive]}>
+          {item.translation}
+        </Text>
+
+        {isStarred && (
+          <Text style={styles.starBadge}>⭐</Text>
+        )}
       </View>
 
-      <Text style={styles.arabicText}>
-        {item.text}
-      </Text>
-
-      {isActive && (
-        <View style={styles.miniProgressBg}>
-          <View style={[styles.miniProgressFill, { width: `${Math.round(currentProgress * 100)}%` as any }]} />
-        </View>
-      )}
-
-      {item.translation ? <Text style={styles.translationText}>{item.translation}</Text> : null}
+      {/* ── Hairline divider ── */}
+      {!isActive && <View style={styles.ayahDivider} />}
     </TouchableOpacity>
   );
-}, (prevProps, nextProps) => {
-  return prevProps.item.number === nextProps.item.number &&
-         prevProps.item.text === nextProps.item.text &&
-         prevProps.isActive === nextProps.isActive &&
-         prevProps.isThisPlaying === nextProps.isThisPlaying &&
-         prevProps.isLoadingThis === nextProps.isLoadingThis &&
-         prevProps.currentProgress === nextProps.currentProgress;
+}, (prev, next) => {
+  return prev.item.number === next.item.number &&
+    prev.item.text === next.item.text &&
+    prev.isActive === next.isActive &&
+    prev.isThisPlaying === next.isThisPlaying &&
+    prev.isLoadingThis === next.isLoadingThis &&
+    prev.currentProgress === next.currentProgress &&
+    prev.showTransliteration === next.showTransliteration &&
+    prev.isStarred === next.isStarred;
 });
 
 export const QuranReader = ({ route, navigation }: any) => {
   const { surahNumber, surahName } = route.params;
+
+  const [showTransliteration, setShowTransliteration] = useState(false);
+  const [starredAyahs, setStarredAyahs] = useState<Set<number>>(new Set());
+  const ayahOfMyLife = useAppStore(state => state.ayahOfMyLife);
 
   // ── Data state ────────────────────────────────────────────────
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
@@ -192,7 +223,7 @@ export const QuranReader = ({ route, navigation }: any) => {
       await AsyncStorage.setItem(`@quran_session_${surahNumber}`, indexInAyahsArray.toString());
       savedStartIndexRef.current = indexInAyahsArray;
       setHasSavedSession(true);
-    } catch (_) {}
+    } catch (_) { }
   }, [surahNumber]);
 
   // ── Audio engine refs ─────────────────────────────────────────
@@ -209,7 +240,7 @@ export const QuranReader = ({ route, navigation }: any) => {
   const [activeAyahNum, setActiveAyahNum] = useState<number | null>(null);
   const [isBismillahPlaying, setIsBismillahPlaying] = useState(false);
   const [isQueueLoading, setIsQueueLoading] = useState(false);
-  const [currentProgress, setCurrentProgress] = useState(0); 
+  const [currentProgress, setCurrentProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
   const [scrubberVisible, setScrubberVisible] = useState(false);
@@ -310,10 +341,10 @@ export const QuranReader = ({ route, navigation }: any) => {
   useEffect(() => {
     if (isAdhanPlaying && !isPaused && soundRef.current) {
       console.log('[QuranReader] Adhan intercept trigger: Pausing recitation.');
-      soundRef.current.pauseAsync().catch(() => {});
+      soundRef.current.pauseAsync().catch(() => { });
       setIsPaused(true);
       isPausedRef.current = true;
-      try { Speech.stop(); } catch (e) {}
+      try { Speech.stop(); } catch (e) { }
     }
   }, [isAdhanPlaying, isPaused]);
 
@@ -327,7 +358,7 @@ export const QuranReader = ({ route, navigation }: any) => {
     const loadSurah = async () => {
       try {
         const { surah, ayahs: a } = await fetchSurah(surahNumber);
-        
+
         setSurahInfo(surah);
         setAyahs(a);
         ayahsRef.current = a;
@@ -382,7 +413,7 @@ export const QuranReader = ({ route, navigation }: any) => {
     playbackTokenRef.current += 1;
     isQueueActiveRef.current = false;
     queueRef.current = [];
-    
+
     if (soundRef.current) {
       try {
         await soundRef.current.stopAsync();
@@ -392,7 +423,7 @@ export const QuranReader = ({ route, navigation }: any) => {
       }
       soundRef.current = null;
     }
-    
+
     // Stop any ongoing Text-To-Speech translation playback safely
     try {
       Speech.stop();
@@ -428,13 +459,13 @@ export const QuranReader = ({ route, navigation }: any) => {
     playIndexRef.current = index;
 
     // Track for resume logic (find actual array index, not queue index)
-    const ayahIndexToSave = item.ayahNumber === null 
-      ? 0 
+    const ayahIndexToSave = item.ayahNumber === null
+      ? 0
       : ayahs.findIndex(a => a.number === item.ayahNumber);
     if (ayahIndexToSave !== -1) {
       saveSession(ayahIndexToSave);
     }
-    
+
     // Also update global store for "Last Reading" widget
     setLastReading({
       surahNumber,
@@ -449,7 +480,7 @@ export const QuranReader = ({ route, navigation }: any) => {
       setIsBismillahPlaying(false);
       setActiveAyahNum(item.ayahNumber);
     }
-    
+
     setCurrentProgress(0);
     setIsPaused(false);
     isPausedRef.current = false;
@@ -487,22 +518,22 @@ export const QuranReader = ({ route, navigation }: any) => {
             }
             setCurrentProgress(1);
             console.log(`[QuranReader] Arabic finished for ayah ${item.ayahNumber || 'Bismillah'}`);
-            
+
             // TTS Injection layer
             const storeState = useAppStore.getState();
             const shouldSpeak = storeState.playTranslationAudio;
             const ttsLang = storeState.translationLang;
-            
+
             // Find the translation string for this specific ayah
-            const currentAyah = item.ayahNumber !== null 
-              ? ayahs.find(a => a.number === item.ayahNumber) 
+            const currentAyah = item.ayahNumber !== null
+              ? ayahs.find(a => a.number === item.ayahNumber)
               : null;
-            
+
             const triggerNextAyah = () => {
               if (isPausedRef.current || !isQueueActiveRef.current) return;
               console.log(`[QuranReader] Moving to ayah ${index + 1}`);
-              setTimeout(() => { 
-                if (playAyahRef.current) playAyahRef.current(index + 1); 
+              setTimeout(() => {
+                if (playAyahRef.current) playAyahRef.current(index + 1);
               }, 250);
             };
 
@@ -511,32 +542,32 @@ export const QuranReader = ({ route, navigation }: any) => {
                 try {
                   let langTag = 'en-US';
                   let ttsLangCode = 'en';
-                  
+
                   if (ttsLang === 'ml') { langTag = 'ml-IN'; ttsLangCode = 'ml'; }
                   else if (ttsLang === 'hi') { langTag = 'hi-IN'; ttsLangCode = 'hi'; }
-                  
+
                   // Verification Phase
                   const voices = await Speech.getAvailableVoicesAsync();
                   const isSupported = ttsLangCode === 'en' || voices.some(v => {
                     const low = v.language.toLowerCase();
                     return low.startsWith(ttsLangCode) || low.includes(ttsLangCode);
                   });
-                  
+
                   console.log(`[QuranReader] ${ttsLang === 'ml' ? 'Malayalam' : ttsLang === 'hi' ? 'Hindi' : 'English'} supported: ${isSupported}`);
-                  
+
                   if (!isSupported) {
                     console.log(`[QuranReader] Skipping ${ttsLang} TTS (Unsupported)`);
                     triggerNextAyah();
                     return; // Skip immediately
                   }
-                  
+
                   let translationFinished = false;
 
                   const failsafeTimeout = setTimeout(() => {
                     if (!translationFinished && !isPausedRef.current) {
                       translationFinished = true;
                       console.log('[QuranReader] TTS Timeout! Forcing next.');
-                      try { Speech.stop(); } catch(e) {}
+                      try { Speech.stop(); } catch (e) { }
                       triggerNextAyah();
                     }
                   }, Math.max((currentAyah.translation?.length || 0) * 100 + 4000, 8000));
@@ -573,12 +604,12 @@ export const QuranReader = ({ route, navigation }: any) => {
           }
         },
       );
-      
+
       // If the token changed during the await, it means clearQueue or another playAyah was called.
       // We MUST abort this stale sound object immediately to prevent double playback leaks.
       if (currentToken !== playbackTokenRef.current) {
         console.log(`[QuranReader] Aborting stale audio playback for ayah ${item.ayahNumber}`);
-        sound.unloadAsync().catch(() => {});
+        sound.unloadAsync().catch(() => { });
         return;
       }
 
@@ -616,7 +647,7 @@ export const QuranReader = ({ route, navigation }: any) => {
       await playSurahFromStart(startIndex);
       return;
     }
-    
+
     if (isPaused) {
       await soundRef.current.playAsync();
       setIsPaused(false);
@@ -632,7 +663,7 @@ export const QuranReader = ({ route, navigation }: any) => {
 
   const handleNext = useCallback(async () => {
     if (queueRef.current.length === 0) return;
-    try { Speech.stop(); } catch (e) {}
+    try { Speech.stop(); } catch (e) { }
     const nextIdx = playIndexRef.current + 1;
     if (nextIdx < queueRef.current.length) {
       await playAyah(nextIdx);
@@ -643,7 +674,7 @@ export const QuranReader = ({ route, navigation }: any) => {
 
   const handlePrev = useCallback(async () => {
     if (queueRef.current.length === 0) return;
-    try { Speech.stop(); } catch (e) {}
+    try { Speech.stop(); } catch (e) { }
     const prevIdx = playIndexRef.current - 1;
     if (prevIdx >= 0) {
       await playAyah(prevIdx);
@@ -686,6 +717,8 @@ export const QuranReader = ({ route, navigation }: any) => {
       translation: selectedAyah.translation ?? '',
       reference: `Surah ${surahInfo?.englishName ?? ''} ${surahNumber}:${selectedAyah.numberInSurah}`,
     });
+    // Star this ayah permanently in this session
+    setStarredAyahs(prev => new Set([...prev, selectedAyah.number]));
     setShowModal(false);
     Animated.sequence([
       Animated.timing(shimmerAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
@@ -724,6 +757,8 @@ export const QuranReader = ({ route, navigation }: any) => {
     const isActive = activeAyahNum === item.number;
     const isThisPlaying = isActive && !isPaused;
     const isLoadingThis = isQueueLoading && isActive;
+    const isStarred = starredAyahs.has(item.number) ||
+      (ayahOfMyLife?.arabic === item.text);
 
     return (
       <AyahItem
@@ -734,9 +769,13 @@ export const QuranReader = ({ route, navigation }: any) => {
         currentProgress={isActive ? currentProgress : 0}
         onLongPress={handleLongPress}
         onPress={handleAyahPress}
+        showTransliteration={showTransliteration}
+        isStarred={isStarred}
       />
     );
-  }, [activeAyahNum, isPaused, isQueueLoading, currentProgress, handleLongPress, handleAyahPress]);
+  }, [activeAyahNum, isPaused, isQueueLoading, currentProgress,
+    handleLongPress, handleAyahPress, showTransliteration,
+    starredAyahs, ayahOfMyLife]);
 
   // ─────────────────────────────────────────────────────────────
   // LIST HEADER
@@ -762,7 +801,6 @@ export const QuranReader = ({ route, navigation }: any) => {
       </View>
 
       <TouchableOpacity
-        id="play-surah-btn"
         style={styles.playSurahBtn}
         onPress={() => {
           if (isAnythingPlaying && !isPaused) {
@@ -791,8 +829,15 @@ export const QuranReader = ({ route, navigation }: any) => {
           <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
         )}
       </TouchableOpacity>
+
+      {/* ── Section label: Arabic ── */}
+      <View style={styles.sectionDivider}>
+        <View style={styles.sectionDividerLine} />
+        <Text style={styles.sectionDividerText}>ARABIC</Text>
+        <View style={styles.sectionDividerLine} />
+      </View>
     </View>
-);
+  );
 
   // ─────────────────────────────────────────────────────────────
   // MAIN RENDER
@@ -859,7 +904,7 @@ export const QuranReader = ({ route, navigation }: any) => {
             { paddingBottom: safeBottom + (isAnythingPlaying ? 100 : 0) }
           ]}
           showsVerticalScrollIndicator={false}
-          extraData={{ activeAyahNum, isBismillahPlaying, isQueueLoading, currentProgress, isPaused }}
+          extraData={{ activeAyahNum, isBismillahPlaying, isQueueLoading, currentProgress, isPaused, showTransliteration, starredAyahs }}
           ListHeaderComponent={<ListHeader />}
           ListFooterComponent={
             <View style={styles.footer}>
@@ -870,7 +915,7 @@ export const QuranReader = ({ route, navigation }: any) => {
               </TouchableOpacity>
               <View style={{ height: 32 }} />
             </View>
-}
+          }
         />
       )}
 
@@ -926,7 +971,7 @@ export const QuranReader = ({ route, navigation }: any) => {
             <View style={[styles.audioProgressFill, { flex: currentProgress }]} />
             <View style={{ flex: Math.max(0, 1 - currentProgress) }} />
           </View>
-          
+
           <View style={styles.audioBarContent}>
             {/* Title / Info */}
             <View style={styles.audioInfoCol}>
@@ -990,7 +1035,7 @@ export const QuranReader = ({ route, navigation }: any) => {
         </View>
       </Modal>
     </ScreenWrapper>
-);
+  );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -998,62 +1043,319 @@ export const QuranReader = ({ route, navigation }: any) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  // ── Top bar ──────────────────────────────────────────────────
   topBar: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: Spacing.base, paddingBottom: Spacing.md,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
     backgroundColor: 'rgba(248,246,241,0.97)', zIndex: 10,
   },
   backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   topCenter: { flex: 1, alignItems: 'center' },
-  surahTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, color: Colors.textDark },
-  surahArabic: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 16, color: Colors.primary, marginTop: 2 },
+  surahTitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textDark,
+  },
+  surahArabic: {
+    fontFamily: 'ScheherazadeNew-Regular',
+    fontSize: 16, color: Colors.primary, marginTop: 2,
+  },
+
+
+  // ── Loading / Error ───────────────────────────────────────────
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontFamily: 'Manrope', fontSize: 14, color: Colors.textMuted },
   errorText: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '700', color: Colors.textDark },
   retryBtn: { backgroundColor: Colors.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
   retryText: { color: '#fff', fontFamily: 'Plus Jakarta Sans', fontWeight: '700' },
-  listContent: { paddingHorizontal: Spacing.base, paddingTop: Spacing.md },
-  bismillahContainer: { paddingVertical: Spacing.xl, alignItems: 'center', gap: 12 },
-  bismillahRow: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 16, gap: 8 },
-  bismillahRowActive: { backgroundColor: 'rgba(15,109,91,0.08)', borderWidth: 1, borderColor: 'rgba(15,109,91,0.15)' },
-  bismillahText: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 26, color: Colors.primary, textAlign: 'center', lineHeight: 48 },
-  bismillahPlayPulse: { backgroundColor: 'rgba(15,109,91,0.1)', borderRadius: 12, padding: 4, marginTop: 4 },
-  surahMeta: { backgroundColor: 'rgba(15,109,91,0.08)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
-  surahMetaText: { fontFamily: 'Manrope', fontSize: 12, fontWeight: '600', color: Colors.primary, letterSpacing: 0.5 },
-  playSurahBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, width: '90%', paddingVertical: 14, borderRadius: 18, overflow: 'hidden', marginTop: 4, ...Shadows.green },
-  playSurahBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: '700', color: '#fff' },
-  ayahBlock: { marginBottom: Spacing.xl, paddingBottom: Spacing.xl, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 4 },
-  ayahBlockActive: { backgroundColor: 'rgba(15,109,91,0.05)', borderRadius: BorderRadius.lg, padding: Spacing.md, borderBottomWidth: 0 },
-  ayahHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  ayahNumCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
-  ayahNum: { fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: Typography.weights.bold, color: '#fff' },
-  audioBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(15,109,91,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(15,109,91,0.2)' },
-  audioBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  arabicText: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 26, color: Colors.primary, textAlign: 'right', lineHeight: 52, fontWeight: Typography.weights.medium, marginBottom: Spacing.md },
-  miniProgressBg: { height: 3, backgroundColor: 'rgba(15,109,91,0.15)', borderRadius: 2, marginBottom: Spacing.md, overflow: 'hidden' },
-  miniProgressFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 2 },
-  translationText: { fontFamily: 'Manrope', fontSize: Typography.sizes.md, color: Colors.textLight, lineHeight: 24, textAlign: 'left' },
-  footer: { alignItems: 'center', paddingVertical: Spacing['2xl'], gap: Spacing.md },
-  separator: { height: 1, backgroundColor: 'rgba(0,0,0,0.05)', width: '60%', marginBottom: 16 },
-  footerText: { fontSize: Typography.sizes.md, color: Colors.textMuted, fontStyle: 'italic' },
-  sukoonPrompt: { fontFamily: 'Manrope', fontSize: Typography.sizes.md, color: Colors.primary, fontWeight: Typography.weights.semibold, textAlign: 'center' },
-  shimmerBanner: { position: 'absolute', bottom: 120, left: Spacing.base, right: Spacing.base, borderRadius: BorderRadius.lg, overflow: 'hidden', ...Shadows.gold },
-  shimmerGradient: { padding: Spacing.md, alignItems: 'center' },
-  shimmerText: { fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: '#fff' },
-  shimmerSubtext: { fontSize: Typography.sizes.sm, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
-  modalCard: { backgroundColor: '#fff', borderRadius: BorderRadius['2xl'], padding: Spacing.xl, width: '100%', alignItems: 'center', ...Shadows.lg },
-  modalEmoji: { fontSize: 40, marginBottom: Spacing.md },
-  modalTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold, color: Colors.textDark, textAlign: 'center', marginBottom: Spacing.base },
-  modalArabic: { fontFamily: 'ScheherazadeNew-Regular', fontSize: 20, color: Colors.primary, textAlign: 'center', lineHeight: 40, marginBottom: Spacing.md },
-  modalTranslation: { fontFamily: 'Manrope', fontSize: Typography.sizes.md, color: Colors.textLight, textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 22 },
-  modalConfirmBtn: { width: '100%', borderRadius: BorderRadius.full, overflow: 'hidden', marginBottom: Spacing.md },
-  modalConfirmGradient: { paddingVertical: 16, alignItems: 'center', borderRadius: BorderRadius.full },
-  modalConfirmText: { fontFamily: 'Plus Jakarta Sans', fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, color: '#fff' },
-  modalCancelText: { fontFamily: 'Manrope', fontSize: Typography.sizes.md, color: Colors.textLight, paddingVertical: 8 },
 
-  // ── Enhanced Bottom Audio Bar styles ──
+  // ── List ─────────────────────────────────────────────────────
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: Spacing.md,
+  },
+
+  // ── Header (bismillah + play btn) ─────────────────────────────
+  bismillahContainer: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 4,
+  },
+  bismillahRow: {
+    alignItems: 'center',
+    paddingVertical: 8, paddingHorizontal: 20,
+    borderRadius: 16, gap: 8,
+  },
+  bismillahRowActive: {
+    backgroundColor: 'rgba(15,109,91,0.08)',
+    borderWidth: 1, borderColor: 'rgba(15,109,91,0.15)',
+  },
+  bismillahText: {
+    fontFamily: 'ScheherazadeNew-Regular',
+    fontSize: 28, color: '#1B3A2D',
+    textAlign: 'center', lineHeight: 52,
+  },
+  bismillahPlayPulse: {
+    backgroundColor: 'rgba(15,109,91,0.1)',
+    borderRadius: 12, padding: 4, marginTop: 4,
+  },
+  surahMeta: {
+    backgroundColor: 'rgba(15,109,91,0.07)',
+    paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
+  },
+  surahMetaText: {
+    fontFamily: 'Manrope', fontSize: 12,
+    fontWeight: '600', color: Colors.primary, letterSpacing: 0.5,
+  },
+  playSurahBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 10,
+    width: '100%', paddingVertical: 14,
+    borderRadius: 18, overflow: 'hidden',
+    marginTop: 4, ...Shadows.green,
+  },
+  playSurahBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 15, fontWeight: '700', color: '#fff',
+  },
+
+  // ── Section divider (ARABIC / TRANSLATION labels) ─────────────
+  sectionDivider: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 10, width: '100%', marginTop: 8,
+  },
+  sectionDividerLine: {
+    flex: 1, height: 1,
+    backgroundColor: Colors.accent,
+    opacity: 0.3,
+  },
+  sectionDividerText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10, fontWeight: '800',
+    color: Colors.accent, letterSpacing: 2,
+  },
+
+  // ── Ayah item (Mushaf style) ──────────────────────────────────
+  ayahBlock: {
+    paddingHorizontal: 4,
+    paddingTop: 20,
+    paddingBottom: 4,
+    backgroundColor: 'transparent',
+  },
+  ayahBlockActive: {
+    backgroundColor: 'rgba(15,109,91,0.05)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    marginHorizontal: -8,
+  },
+
+  // Arabic text — flows right to left, continuous
+  arabicBlock: {
+    marginBottom: 12,
+  },
+  arabicText: {
+    fontFamily: 'ScheherazadeNew-Regular',
+    fontSize: 26,
+    color: '#1B3A2D',
+    textAlign: 'right',
+    lineHeight: 58,
+    writingDirection: 'rtl',
+  },
+  arabicTextActive: {
+    color: Colors.primary,
+  },
+
+  // Inline ayah number marker ﴿١﴾
+  ayahMarker: {
+    fontFamily: 'ScheherazadeNew-Regular',
+    fontSize: 20,
+    color: Colors.accent,
+  },
+  ayahMarkerActive: {
+    color: Colors.primary,
+  },
+
+  // Progress bar under active Arabic text
+  miniProgressBg: {
+    height: 2,
+    backgroundColor: 'rgba(15,109,91,0.12)',
+    borderRadius: 1,
+    marginTop: 6,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  miniProgressFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 1,
+  },
+
+  // Transliteration row (hidden by default)
+  transliterationText: {
+    fontFamily: 'Manrope',
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    textAlign: 'right',
+    lineHeight: 22,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+
+  // Translation row
+  translationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  ayahNumBadge: {
+    width: 26, height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(212,175,55,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, marginTop: 2,
+  },
+  ayahNumBadgeActive: {
+    backgroundColor: Colors.primary,
+  },
+  ayahNumBadgeText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10, fontWeight: '800',
+    color: Colors.accent,
+  },
+  ayahNumBadgeTextActive: {
+    color: '#fff',
+  },
+  translationText: {
+    flex: 1,
+    fontFamily: 'Manrope',
+    fontSize: 14,
+    color: '#4A5568',
+    lineHeight: 24,
+  },
+  translationTextActive: {
+    color: Colors.primary,
+  },
+  starBadge: {
+    fontSize: 14,
+    marginTop: 2,
+    flexShrink: 0,
+  },
+
+  // Hairline divider between ayahs
+  ayahDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(0,0,0,0.07)',
+    marginTop: 8,
+    marginHorizontal: 4,
+  },
+
+  // ── Footer ───────────────────────────────────────────────────
+  footer: {
+    alignItems: 'center',
+    paddingVertical: Spacing['2xl'],
+    gap: Spacing.md,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: Colors.accent,
+    opacity: 0.2,
+    width: '60%',
+    marginBottom: 16,
+  },
+  footerText: {
+    fontSize: Typography.sizes.md,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    fontFamily: 'Manrope',
+  },
+  sukoonPrompt: {
+    fontFamily: 'Manrope',
+    fontSize: Typography.sizes.md,
+    color: Colors.primary,
+    fontWeight: Typography.weights.semibold,
+    textAlign: 'center',
+  },
+
+  // ── Shimmer banner ────────────────────────────────────────────
+  shimmerBanner: {
+    position: 'absolute',
+    bottom: 120,
+    left: Spacing.base, right: Spacing.base,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden', ...Shadows.gold,
+  },
+  shimmerGradient: { padding: Spacing.md, alignItems: 'center' },
+  shimmerText: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.bold, color: '#fff',
+  },
+  shimmerSubtext: {
+    fontSize: Typography.sizes.sm,
+    color: 'rgba(255,255,255,0.8)', marginTop: 2,
+  },
+
+  // ── Modal ─────────────────────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center', alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius['2xl'],
+    padding: Spacing.xl,
+    width: '100%', alignItems: 'center',
+    ...Shadows.lg,
+  },
+  modalTitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textDark,
+    textAlign: 'center', marginBottom: Spacing.base,
+    marginTop: Spacing.md,
+  },
+  modalArabic: {
+    fontFamily: 'ScheherazadeNew-Regular',
+    fontSize: 20, color: Colors.primary,
+    textAlign: 'center', lineHeight: 40,
+    marginBottom: Spacing.md,
+  },
+  modalTranslation: {
+    fontFamily: 'Manrope',
+    fontSize: Typography.sizes.md,
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginBottom: Spacing.xl, lineHeight: 22,
+  },
+  modalConfirmBtn: {
+    width: '100%',
+    borderRadius: BorderRadius.full,
+    overflow: 'hidden', marginBottom: Spacing.md,
+  },
+  modalConfirmGradient: {
+    paddingVertical: 16, alignItems: 'center',
+    borderRadius: BorderRadius.full,
+  },
+  modalConfirmText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold, color: '#fff',
+  },
+  modalCancelText: {
+    fontFamily: 'Manrope',
+    fontSize: Typography.sizes.md,
+    color: Colors.textLight, paddingVertical: 8,
+  },
+
+  // ── Bottom audio bar ──────────────────────────────────────────
   audioBar: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
@@ -1061,13 +1363,27 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)',
     ...Shadows.md,
   },
-  audioProgressBg: { width: '100%', flexDirection: 'row', height: 3, backgroundColor: 'rgba(15,109,91,0.1)' },
+  audioProgressBg: {
+    width: '100%', flexDirection: 'row',
+    height: 3, backgroundColor: 'rgba(15,109,91,0.1)',
+  },
   audioProgressFill: { height: '100%', backgroundColor: Colors.primary },
-  audioBarContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 14 },
+  audioBarContent: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 14,
+  },
   audioInfoCol: { flex: 1, justifyContent: 'center' },
-  audioTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '700', color: Colors.textDark, marginBottom: 2 },
+  audioTitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 14, fontWeight: '700',
+    color: Colors.textDark, marginBottom: 2,
+  },
   audioSubtitle: { fontFamily: 'Manrope', fontSize: 12, color: Colors.textMuted },
-  audioControlsRow: { flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1.5, justifyContent: 'center' },
+  audioControlsRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 16, flex: 1.5, justifyContent: 'center',
+  },
   playPauseBtn: {
     width: 48, height: 48, borderRadius: 24,
     backgroundColor: Colors.primary,
@@ -1079,56 +1395,46 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(15,109,91,0.06)',
   },
-  closeBtn: { flex: 0.5, alignItems: 'flex-end', justifyContent: 'center', height: 40, width: 40 },
+  closeBtn: {
+    flex: 0.5, alignItems: 'flex-end',
+    justifyContent: 'center', height: 40, width: 40,
+  },
+
+  // ── Scrubber ──────────────────────────────────────────────────
   scrubberTrack: {
-    position: 'absolute',
-    right: 0,
-    top: 100,
+    position: 'absolute', right: 0, top: 100,
     width: 36,
     height: Dimensions.get('window').height * 0.65,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+    alignItems: 'center', justifyContent: 'flex-start',
     zIndex: 20,
   },
   scrubberLine: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
+    position: 'absolute', top: 0, bottom: 0,
     width: 2,
     backgroundColor: 'rgba(15,109,91,0.12)',
     borderRadius: 1,
   },
   scrubberHandle: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 28, height: 28,
+    alignItems: 'center', justifyContent: 'center',
   },
   scrubberDot: {
-    width: 4,
-    height: 36,
-    borderRadius: 2,
+    width: 4, height: 36, borderRadius: 2,
     backgroundColor: 'rgba(15,109,91,0.45)',
   },
   scrubberBubble: {
-    position: 'absolute',
-    right: 30,
-    width: 44,
-    height: 28,
+    position: 'absolute', right: 30,
+    width: 44, height: 28,
     borderRadius: 8,
     backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowOpacity: 0.15, shadowRadius: 4,
     elevation: 4,
   },
   scrubberBubbleText: {
     fontFamily: 'Plus Jakarta Sans',
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#fff',
+    fontSize: 12, fontWeight: '800', color: '#fff',
   },
 });

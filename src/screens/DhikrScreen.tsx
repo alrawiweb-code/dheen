@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Colors } from '../theme';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import { useAppStore } from '../store/useAppStore';
 
 const { width } = Dimensions.get('window');
 
@@ -187,11 +188,9 @@ const TargetSheet: React.FC<TargetSheetProps> = ({ visible, current, onSelect, o
 };
 
 export const DhikrScreen = ({ navigation }: any) => {
-  const [count, setCount] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const [target, setTarget] = useState(33);
+  const { dhikr, setDhikrState, resetDhikr } = useAppStore();
+  const { count, totalCount, cycleCount, target } = dhikr;
   const [showTargetSheet, setShowTargetSheet] = useState(false);
-  const [cycleCount, setCycleCount] = useState(0);
 
   const tapScale = useRef(new Animated.Value(1)).current;
   const pulseOpacity = useRef(new Animated.Value(0)).current;
@@ -224,24 +223,20 @@ export const DhikrScreen = ({ navigation }: any) => {
 
     const newCount = count + 1;
     if (newCount >= target) {
-      setCount(0);
-      setTotalCount(tc => tc + 1);
-      setCycleCount(cc => cc + 1);
+      setDhikrState({ count: 0, totalCount: totalCount + 1, cycleCount: cycleCount + 1 });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
-      setCount(newCount);
-      setTotalCount(tc => tc + 1);
+      setDhikrState({ count: newCount, totalCount: totalCount + 1 });
       if (newCount % 33 === 0) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       } else {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     }
-  }, [count, target]);
+  }, [count, target, totalCount, cycleCount, setDhikrState]);
 
   const handleTargetSelect = (t: number) => {
-    setTarget(t);
-    setCount(0);
+    setDhikrState({ target: t, count: 0 });
     setShowTargetSheet(false);
   };
 
@@ -383,9 +378,7 @@ export const DhikrScreen = ({ navigation }: any) => {
         onSelect={handleTargetSelect}
         onClose={() => setShowTargetSheet(false)}
         onReset={() => {
-          setCount(0);
-          setTotalCount(0);
-          setCycleCount(0);
+          resetDhikr();
         }}
       />
     </ScreenWrapper>

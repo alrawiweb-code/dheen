@@ -39,13 +39,13 @@ export const AboutScreen = ({ navigation }: any) => {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.appName}>Deen Islam</Text>
+          <Text style={styles.appName}>Muslim Go Plus</Text>
           <Text style={styles.version}>Version 1.0.0</Text>
         </View>
 
         <View style={styles.infoSection}>
           <Text style={styles.description}>
-            Deen Islam is your personal companion for spiritual growth and peace. Designed to bring focus, faith, and clarity to your daily life.
+            Muslim Go Plus is your personal companion for spiritual growth and peace. Designed to bring focus, faith, and clarity to your daily life.
 
             A product by Alrawi Ventures, built with the vision of empowering the Ummah through meaningful and modern digital experiences.
           </Text>
@@ -77,7 +77,7 @@ export const AboutScreen = ({ navigation }: any) => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Made with love for the Ummah</Text>
-          <Text style={styles.copyright}>© 2026 Deen Islam. All rights reserved.</Text>
+          <Text style={styles.copyright}>© 2026 Muslim Go Plus. All rights reserved.</Text>
         </View>
       </ScrollView>
     </ScreenWrapper>

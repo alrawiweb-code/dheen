@@ -5,8 +5,10 @@
  * document directory. On subsequent accesses, plays from the local file
  * directly — no network required.
  *
- * Web guard: expo-file-system has no web implementation.
- * All functions safely no-op / return null on web.
+ * Safety features:
+ * - Atomic downloads: writes to .tmp file first, renames on success
+ * - Corrupt file detection: validates minimum file size (100KB for Adhan MP3s)
+ * - Web guard: expo-file-system has no web implementation — all functions safely no-op
  */
 
 import { Platform } from 'react-native';
@@ -50,7 +52,16 @@ export const getCachedFilePath = (voiceKey: string): string | null => {
 };
 
 /**
+ * Minimum valid file size for a cached Adhan MP3.
+ * Real Adhan files are typically 500KB–3MB.
+ * A corrupt/partial download that passes 10KB but is still broken
+ * would cause garbled audio. 100KB is a safe minimum.
+ */
+const MIN_VALID_FILE_SIZE = 100_000; // 100KB
+
+/**
  * Checks if an audio file has already been downloaded and cached.
+ * Validates that the file exists AND meets the minimum size threshold.
  */
 export const isCached = async (voiceKey: string): Promise<boolean> => {
   const FileSystem = getFileSystem();
@@ -59,7 +70,7 @@ export const isCached = async (voiceKey: string): Promise<boolean> => {
     const path = getCachedFilePath(voiceKey);
     if (!path) return false;
     const info = await FileSystem.getInfoAsync(path);
-    return info.exists && (info.size ?? 0) > 10_000; // At least 10KB — not a corrupt stub
+    return info.exists && (info.size ?? 0) > MIN_VALID_FILE_SIZE;
   } catch {
     return false;
   }
@@ -67,7 +78,9 @@ export const isCached = async (voiceKey: string): Promise<boolean> => {
 
 /**
  * Downloads an Adhan audio file from the given URL and saves it locally.
- * Shows optional progress via onProgress callback.
+ * Uses atomic download pattern: downloads to a .tmp file first, then
+ * renames to the final path on success. This prevents corrupt partial files.
+ *
  * Returns the local file URI on success, null on failure.
  */
 export const downloadAndCache = async (
@@ -90,11 +103,31 @@ export const downloadAndCache = async (
       return localPath;
     }
 
+    // Clean up any pre-existing corrupt file at the final path
+    try {
+      const existingInfo = await FileSystem.getInfoAsync(localPath);
+      if (existingInfo.exists) {
+        await FileSystem.deleteAsync(localPath, { idempotent: true });
+        console.log(`[AudioCache] Cleaned up invalid cached file for ${voiceKey}`);
+      }
+    } catch { }
+
     console.log(`[AudioCache] Downloading ${voiceKey} from: ${remoteUrl}`);
+
+    // ── Atomic download: write to .tmp, rename on success ──
+    const tmpPath = `${localPath}.tmp`;
+
+    // Clean up any leftover .tmp from a previous interrupted download
+    try {
+      const tmpInfo = await FileSystem.getInfoAsync(tmpPath);
+      if (tmpInfo.exists) {
+        await FileSystem.deleteAsync(tmpPath, { idempotent: true });
+      }
+    } catch { }
 
     const downloadResumable = FileSystem.createDownloadResumable(
       remoteUrl,
-      localPath,
+      tmpPath,
       {},
       (progress) => {
         const percent = progress.totalBytesExpectedToWrite > 0
@@ -107,13 +140,38 @@ export const downloadAndCache = async (
     const result = await downloadResumable.downloadAsync();
 
     if (result && result.uri) {
-      console.log(`[AudioCache] Download complete: ${result.uri}`);
-      return result.uri;
+      // Verify downloaded file meets minimum size
+      const downloadedInfo = await FileSystem.getInfoAsync(tmpPath);
+      if (!downloadedInfo.exists || (downloadedInfo.size ?? 0) < MIN_VALID_FILE_SIZE) {
+        console.warn(`[AudioCache] Downloaded file too small for ${voiceKey}: ${downloadedInfo.size ?? 0} bytes — deleting.`);
+        await FileSystem.deleteAsync(tmpPath, { idempotent: true });
+        return null;
+      }
+
+      // Atomic rename: .tmp → final path
+      await FileSystem.moveAsync({ from: tmpPath, to: localPath });
+      console.log(`[AudioCache] Download complete: ${localPath} (${downloadedInfo.size} bytes)`);
+      return localPath;
     }
+
+    // Download returned no result — clean up tmp
+    try {
+      await FileSystem.deleteAsync(tmpPath, { idempotent: true });
+    } catch { }
 
     return null;
   } catch (err) {
     console.warn(`[AudioCache] Download failed for ${voiceKey}:`, err);
+
+    // Clean up any partial .tmp file on failure
+    try {
+      const FileSystem = getFileSystem();
+      const localPath = getCachedFilePath(voiceKey);
+      if (FileSystem && localPath) {
+        await FileSystem.deleteAsync(`${localPath}.tmp`, { idempotent: true });
+      }
+    } catch { }
+
     return null;
   }
 };

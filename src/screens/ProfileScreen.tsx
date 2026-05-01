@@ -47,6 +47,16 @@ export const ProfileScreen = ({ navigation }: any) => {
   const setProfile = useAppStore(state => state.setProfile);
   const darkMode = useAppStore(state => state.darkMode);
   const setDarkMode = useAppStore(state => state.setDarkMode);
+
+  const cardBg       = darkMode ? 'rgba(255,255,255,0.06)' : '#f5f3ee';
+  const cardBgWhite  = darkMode ? 'rgba(255,255,255,0.06)' : '#fff';
+  const cardBorder   = darkMode ? 'rgba(255,255,255,0.1)'  : 'rgba(0,0,0,0.04)';
+  const textPrimary  = darkMode ? '#fff'                   : Colors.textDark;
+  const textMuted    = darkMode ? 'rgba(255,255,255,0.5)'  : Colors.textMuted;
+  const inputBg      = darkMode ? 'rgba(255,255,255,0.08)' : '#fff';
+  const inputText    = darkMode ? '#fff'                   : Colors.textDark;
+  const inputBorder  = darkMode ? 'rgba(255,255,255,0.1)'  : 'rgba(115,92,0,0.08)';
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(profile.name || 'Friend');
 
@@ -292,9 +302,9 @@ export const ProfileScreen = ({ navigation }: any) => {
           <Text style={styles.heroSubtitle}>Reflecting on your spiritual growth and intentional practices.</Text>
 
           <View style={styles.statsRow}>
-            <View style={styles.statCardLeft}>
+            <View style={[styles.statCardLeft, { backgroundColor: cardBg }]}>
               <Text style={styles.statLabelLeft}>TOTAL PRAYERS</Text>
-              <Text style={styles.statNumberLeft}>{totalPrayers}</Text>
+              <Text style={[styles.statNumberLeft, { color: textPrimary }]}>{totalPrayers}</Text>
             </View>
             <View style={styles.statCardRight}>
               <Text style={styles.statLabelRight}>SUKOON ENTRIES</Text>
@@ -309,7 +319,13 @@ export const ProfileScreen = ({ navigation }: any) => {
             <Text style={styles.sectionTitle}>Prayer Mood Map</Text>
             <Text style={styles.sectionLabel}>Last 30 Days</Text>
           </View>
-          <View style={styles.moodMapCard}>
+          <View style={{
+            backgroundColor: darkMode ? 'rgba(255,255,255,0.04)' : '#fff',
+            padding: Spacing.xl,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+          }}>
             {renderedMoods.length === 0 ? (
               <View style={{ padding: 20, alignItems: 'center' }}>
                 <MaterialIcons name="grid-on" size={32} color="rgba(0,83,68,0.2)" />
@@ -375,13 +391,13 @@ export const ProfileScreen = ({ navigation }: any) => {
               return (
                 <>
                   {weeklyIntentions.map((intention, i) => (
-                    <View key={i} style={[styles.intentionCard, { backgroundColor: 'rgba(15,109,91,0.05)', borderRadius: 20, padding: 20 }]}>
+                    <View key={i} style={[styles.intentionCard, { backgroundColor: cardBg, borderRadius: 20, padding: 20 }]}>
                       <View style={styles.intentionIconWudu}>
                         <MaterialIcons name="emoji-objects" size={20} color={Colors.primary} />
                       </View>
                       <View style={styles.intentionContent}>
-                        <Text style={styles.intentionTitle}>{intention}</Text>
-                        <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.textMuted, marginTop: 4 }}>
+                        <Text style={[styles.intentionTitle, { color: textPrimary }]}>{intention}</Text>
+                        <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: textMuted, marginTop: 4 }}>
                           {i === 0 && todayNiyyah === intention ? "Today's intention" : "This week"}
                         </Text>
                       </View>
@@ -397,10 +413,10 @@ export const ProfileScreen = ({ navigation }: any) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Spiritual Milestones</Text>
           <View style={styles.milestonesGrid}>
-            <View style={styles.milestoneCardSmall}>
+            <View style={[styles.milestoneCardSmall, { backgroundColor: cardBg }]}>
               <MaterialIcons name="wb-twilight" size={28} color={Colors.primary} style={styles.milestoneIcon} />
               <View>
-                <Text style={styles.milestoneTitle}>Early Riser</Text>
+                <Text style={[styles.milestoneTitle, { color: textPrimary }]}>Early Riser</Text>
                 <View style={styles.progressBarBg}>
                   <View style={[styles.progressBarFill, { backgroundColor: Colors.primary, width: `${Math.round(fajrProgress * 100)}%` }]} />
                 </View>
@@ -411,10 +427,10 @@ export const ProfileScreen = ({ navigation }: any) => {
               </View>
             </View>
 
-            <View style={styles.milestoneCardSmall}>
+            <View style={[styles.milestoneCardSmall, { backgroundColor: cardBg }]}>
               <MaterialIcons name="anchor" size={28} color={Colors.secondary} style={styles.milestoneIcon} />
               <View>
-                <Text style={styles.milestoneTitle}>Anchor Found</Text>
+                <Text style={[styles.milestoneTitle, { color: textPrimary }]}>Anchor Found</Text>
                 <View style={styles.progressBarBg}>
                   <View style={[styles.progressBarFill, { backgroundColor: Colors.secondary, width: `${Math.round(streakProgress * 100)}%` }]} />
                 </View>
@@ -487,10 +503,10 @@ export const ProfileScreen = ({ navigation }: any) => {
             </Text>
 
             {/* Currency Selector */}
-            <TouchableOpacity style={styles.currencySelector} onPress={() => setShowCurrencyPicker(true)}>
-              <Text style={styles.currencySelectorLabel}>CURRENCY</Text>
+            <TouchableOpacity style={[styles.currencySelector, { backgroundColor: inputBg }]} onPress={() => setShowCurrencyPicker(true)}>
+              <Text style={[styles.currencySelectorLabel, { color: textMuted }]}>CURRENCY</Text>
               <View style={styles.currencySelectorRight}>
-                <Text style={styles.currencySelectorValue}>{selectedCurrency.symbol} {selectedCurrency.code} — {selectedCurrency.name}</Text>
+                <Text style={[styles.currencySelectorValue, { color: inputText }]}>{selectedCurrency.symbol} {selectedCurrency.code} — {selectedCurrency.name}</Text>
                 <MaterialIcons name="expand-more" size={20} color={Colors.secondary} />
               </View>
             </TouchableOpacity>
@@ -498,9 +514,9 @@ export const ProfileScreen = ({ navigation }: any) => {
             {/* Currency Picker Modal */}
             <Modal visible={showCurrencyPicker} transparent animationType="slide">
               <View style={styles.pickerOverlay}>
-                <View style={styles.pickerSheet}>
+                <View style={[styles.pickerSheet, { backgroundColor: darkMode ? '#1a2e24' : '#fff' }]}>
                   <View style={styles.pickerHeader}>
-                    <Text style={styles.pickerTitle}>Select Currency</Text>
+                    <Text style={[styles.pickerTitle, { color: textPrimary }]}>Select Currency</Text>
                     <TouchableOpacity onPress={() => setShowCurrencyPicker(false)}>
                       <MaterialIcons name="close" size={24} color={Colors.textMuted} />
                     </TouchableOpacity>
@@ -511,8 +527,8 @@ export const ProfileScreen = ({ navigation }: any) => {
                         style={[styles.pickerRow, selectedCurrency.code === c.code && styles.pickerRowActive]}
                         onPress={() => { setSelectedCurrency(c); setShowCurrencyPicker(false); setZakatResult(null); }}>
                         <Text style={styles.pickerRowSymbol}>{c.symbol}</Text>
-                        <Text style={styles.pickerRowCode}>{c.code}</Text>
-                        <Text style={styles.pickerRowName}>{c.name}</Text>
+                        <Text style={[styles.pickerRowCode, { color: textPrimary }]}>{c.code}</Text>
+                        <Text style={[styles.pickerRowName, { color: textMuted }]}>{c.name}</Text>
                         {selectedCurrency.code === c.code && <MaterialIcons name="check" size={18} color={Colors.primary} />}
                       </TouchableOpacity>
                     ))}
@@ -524,82 +540,82 @@ export const ProfileScreen = ({ navigation }: any) => {
             {/* Asset Inputs */}
             <View style={styles.zakatInputGroup}>
               {/* Cash */}
-              <View style={styles.zakatInputRow}>
+              <View style={[styles.zakatInputRow, { backgroundColor: inputBg, borderColor: inputBorder }]}>
                 <View style={styles.zakatInputIcon}><MaterialIcons name="account-balance" size={18} color={Colors.secondary} /></View>
                 <View style={styles.zakatInputFieldWrap}>
-                  <Text style={styles.zakatInputLabel}>Cash & Bank Savings</Text>
-                  <TextInput style={styles.zakatInputField} value={zakat.cash}
+                  <Text style={[styles.zakatInputLabel, { color: textMuted }]}>Cash & Bank Savings</Text>
+                  <TextInput style={[styles.zakatInputField, { color: inputText }]} value={zakat.cash}
                     onChangeText={(v) => setZakat(p => ({ ...p, cash: v.replace(/[^0-9.]/g, '') }))}
-                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={textMuted} />
                 </View>
               </View>
 
               {/* Gold */}
-              <View style={[styles.zakatInputRow, { flexDirection: 'column', gap: 8 }]}>
+              <View style={[styles.zakatInputRow, { flexDirection: 'column', gap: 8, backgroundColor: inputBg, borderColor: inputBorder }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <View style={styles.zakatInputIcon}><MaterialIcons name="diamond" size={18} color={Colors.secondary} /></View>
-                  <Text style={[styles.zakatInputLabel, { flex: 1, marginBottom: 0 }]}>Gold</Text>
+                  <Text style={[styles.zakatInputLabel, { flex: 1, marginBottom: 0, color: textMuted }]}>Gold</Text>
                   <TouchableOpacity style={styles.toggleModeBtn}
                     onPress={() => setZakat(p => ({ ...p, goldInputMode: p.goldInputMode === 'grams' ? 'value' : 'grams' }))}>
                     <Text style={styles.toggleModeBtnText}>{zakat.goldInputMode === 'grams' ? 'Switch to Value' : 'Enter'}</Text>
                   </TouchableOpacity>
                 </View>
-                <TextInput style={[styles.zakatInputField, { paddingLeft: 12 }]}
+                <TextInput style={[styles.zakatInputField, { paddingLeft: 12, color: inputText }]}
                   value={zakat.goldInputMode === 'grams' ? zakat.goldGrams : zakat.goldValue}
                   onChangeText={(v) => setZakat(p => zakat.goldInputMode === 'grams' ? { ...p, goldGrams: v.replace(/[^0-9.]/g, '') } : { ...p, goldValue: v.replace(/[^0-9.]/g, '') })}
                   keyboardType="decimal-pad"
                   placeholder={zakat.goldInputMode === 'grams' ? 'Weight in grams' : `Market value in ${selectedCurrency.code}`}
-                  placeholderTextColor={Colors.textMuted} />
+                  placeholderTextColor={textMuted} />
               </View>
 
               {/* Silver */}
-              <View style={[styles.zakatInputRow, { flexDirection: 'column', gap: 8 }]}>
+              <View style={[styles.zakatInputRow, { flexDirection: 'column', gap: 8, backgroundColor: inputBg, borderColor: inputBorder }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <View style={styles.zakatInputIcon}><MaterialIcons name="spa" size={18} color={Colors.secondary} /></View>
-                  <Text style={[styles.zakatInputLabel, { flex: 1, marginBottom: 0 }]}>Silver</Text>
+                  <Text style={[styles.zakatInputLabel, { flex: 1, marginBottom: 0, color: textMuted }]}>Silver</Text>
                   <TouchableOpacity style={styles.toggleModeBtn}
                     onPress={() => setZakat(p => ({ ...p, silverInputMode: p.silverInputMode === 'grams' ? 'value' : 'grams' }))}>
                     <Text style={styles.toggleModeBtnText}>{zakat.silverInputMode === 'grams' ? 'Switch to Value' : 'Enter'}</Text>
                   </TouchableOpacity>
                 </View>
-                <TextInput style={[styles.zakatInputField, { paddingLeft: 12 }]}
+                <TextInput style={[styles.zakatInputField, { paddingLeft: 12, color: inputText }]}
                   value={zakat.silverInputMode === 'grams' ? zakat.silverGrams : zakat.silverValue}
                   onChangeText={(v) => setZakat(p => zakat.silverInputMode === 'grams' ? { ...p, silverGrams: v.replace(/[^0-9.]/g, '') } : { ...p, silverValue: v.replace(/[^0-9.]/g, '') })}
                   keyboardType="decimal-pad"
                   placeholder={zakat.silverInputMode === 'grams' ? 'Weight in grams' : `Market value in ${selectedCurrency.code}`}
-                  placeholderTextColor={Colors.textMuted} />
+                  placeholderTextColor={textMuted} />
               </View>
 
               {/* Investments */}
-              <View style={styles.zakatInputRow}>
+              <View style={[styles.zakatInputRow, { backgroundColor: inputBg, borderColor: inputBorder }]}>
                 <View style={styles.zakatInputIcon}><MaterialIcons name="trending-up" size={18} color={Colors.secondary} /></View>
                 <View style={styles.zakatInputFieldWrap}>
-                  <Text style={styles.zakatInputLabel}>Investments & Stocks</Text>
-                  <TextInput style={styles.zakatInputField} value={zakat.investments}
+                  <Text style={[styles.zakatInputLabel, { color: textMuted }]}>Investments & Stocks</Text>
+                  <TextInput style={[styles.zakatInputField, { color: inputText }]} value={zakat.investments}
                     onChangeText={(v) => setZakat(p => ({ ...p, investments: v.replace(/[^0-9.]/g, '') }))}
-                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={textMuted} />
                 </View>
               </View>
 
               {/* Business */}
-              <View style={styles.zakatInputRow}>
+              <View style={[styles.zakatInputRow, { backgroundColor: inputBg, borderColor: inputBorder }]}>
                 <View style={styles.zakatInputIcon}><MaterialIcons name="store" size={18} color={Colors.secondary} /></View>
                 <View style={styles.zakatInputFieldWrap}>
-                  <Text style={styles.zakatInputLabel}>Business Inventory</Text>
-                  <TextInput style={styles.zakatInputField} value={zakat.business}
+                  <Text style={[styles.zakatInputLabel, { color: textMuted }]}>Business Inventory</Text>
+                  <TextInput style={[styles.zakatInputField, { color: inputText }]} value={zakat.business}
                     onChangeText={(v) => setZakat(p => ({ ...p, business: v.replace(/[^0-9.]/g, '') }))}
-                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={textMuted} />
                 </View>
               </View>
 
               {/* Other */}
-              <View style={styles.zakatInputRow}>
+              <View style={[styles.zakatInputRow, { backgroundColor: inputBg, borderColor: inputBorder }]}>
                 <View style={styles.zakatInputIcon}><MaterialIcons name="inventory" size={18} color={Colors.secondary} /></View>
                 <View style={styles.zakatInputFieldWrap}>
-                  <Text style={styles.zakatInputLabel}>Other Zakatable Assets</Text>
-                  <TextInput style={styles.zakatInputField} value={zakat.other}
+                  <Text style={[styles.zakatInputLabel, { color: textMuted }]}>Other Zakatable Assets</Text>
+                  <TextInput style={[styles.zakatInputField, { color: inputText }]} value={zakat.other}
                     onChangeText={(v) => setZakat(p => ({ ...p, other: v.replace(/[^0-9.]/g, '') }))}
-                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={textMuted} />
                 </View>
               </View>
 
@@ -610,12 +626,12 @@ export const ProfileScreen = ({ navigation }: any) => {
                 </View>
                 <View style={styles.zakatInputFieldWrap}>
                   <Text style={[styles.zakatInputLabel, { color: '#ba1a1a' }]}>Short-term Debts (due within 12 months only)</Text>
-                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, color: Colors.textMuted, marginBottom: 4 }}>
+                  <Text style={{ fontFamily: 'Manrope', fontSize: 10, color: textMuted, marginBottom: 4 }}>
                     Do not include mortgages — only this year's due amount
                   </Text>
-                  <TextInput style={styles.zakatInputField} value={zakat.shortTermDebts}
+                  <TextInput style={[styles.zakatInputField, { color: inputText }]} value={zakat.shortTermDebts}
                     onChangeText={(v) => setZakat(p => ({ ...p, shortTermDebts: v.replace(/[^0-9.]/g, '') }))}
-                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={Colors.textMuted} />
+                    keyboardType="decimal-pad" placeholder={`0.00 ${selectedCurrency.code}`} placeholderTextColor={textMuted} />
                 </View>
               </View>
             </View>
@@ -625,7 +641,7 @@ export const ProfileScreen = ({ navigation }: any) => {
               <View style={[styles.hawlCheckbox, hawlAcknowledged && styles.hawlCheckboxChecked]}>
                 {hawlAcknowledged && <MaterialIcons name="check" size={14} color="#fff" />}
               </View>
-              <Text style={styles.hawlText}>I confirm this wealth has been in my possession for one full lunar year (Hawl)</Text>
+              <Text style={[styles.hawlText, { color: textPrimary }]}>I confirm this wealth has been in my possession for one full lunar year (Hawl)</Text>
             </TouchableOpacity>
 
             {zakatError ? <Text style={styles.zakatErrorText}>{zakatError}</Text> : null}
@@ -634,27 +650,27 @@ export const ProfileScreen = ({ navigation }: any) => {
             {zakatResult && (
               <View style={[styles.zakatResultCard, zakatResult.isEligible ? styles.zakatResultEligible : styles.zakatResultNone]}>
                 <View style={styles.zakatResultRow}>
-                  <Text style={styles.zakatResultLabel}>Currency</Text>
-                  <Text style={styles.zakatResultValue}>{zakatResult.currency}</Text>
+                  <Text style={[styles.zakatResultLabel, { color: textMuted }]}>Currency</Text>
+                  <Text style={[styles.zakatResultValue, { color: textPrimary }]}>{zakatResult.currency}</Text>
                 </View>
                 <View style={styles.zakatResultRow}>
-                  <Text style={styles.zakatResultLabel}>Nisab Threshold</Text>
-                  <Text style={styles.zakatResultValue}>{zakatResult.nisabInLocalCurrency.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                  <Text style={[styles.zakatResultLabel, { color: textMuted }]}>Nisab Threshold</Text>
+                  <Text style={[styles.zakatResultValue, { color: textPrimary }]}>{zakatResult.nisabInLocalCurrency.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 <View style={styles.zakatResultRow}>
-                  <Text style={styles.zakatResultLabel}>Net Wealth</Text>
-                  <Text style={styles.zakatResultValue}>{zakatResult.netWealth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                  <Text style={[styles.zakatResultLabel, { color: textMuted }]}>Net Wealth</Text>
+                  <Text style={[styles.zakatResultValue, { color: textPrimary }]}>{zakatResult.netWealth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 <View style={[styles.zakatResultRow, styles.zakatResultDivider]} />
                 {zakatResult.isEligible ? (
                   <>
                     <Text style={styles.zakatEligibleLabel}>Zakat Due (2.5%)</Text>
-                    <Text style={styles.zakatAmount}>{selectedCurrency.symbol}{zakatResult.zakatDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                    <Text style={[styles.zakatAmount, { color: textPrimary }]}>{selectedCurrency.symbol}{zakatResult.zakatDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     <Text style={styles.zakatNote}>May Allah accept your charity.</Text>
                   </>
                 ) : (
                   <>
-                    <Text style={styles.zakatNoZakatLabel}>No Zakat Due</Text>
+                    <Text style={[styles.zakatNoZakatLabel, { color: textPrimary }]}>No Zakat Due</Text>
                     <Text style={styles.zakatNote}>Your net wealth is below the Nisab threshold.</Text>
                   </>
                 )}
@@ -677,7 +693,17 @@ export const ProfileScreen = ({ navigation }: any) => {
 
           {/* About Section */}
           <TouchableOpacity
-            style={styles.aboutButton}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: darkMode ? 'rgba(255,255,255,0.06)' : '#fff',
+              padding: 16,
+              borderRadius: 20,
+              marginTop: Spacing['2xl'],
+              borderWidth: 1,
+              borderColor: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+            }}
             onPress={() => navigation.navigate('About')}
             activeOpacity={0.7}
           >
@@ -688,8 +714,8 @@ export const ProfileScreen = ({ navigation }: any) => {
                 resizeMode="contain"
               />
               <View>
-                <Text style={styles.aboutTitle}>About Deen Islam</Text>
-                <Text style={styles.aboutVersion}>Version 1.0.0 • Spiritual Growth</Text>
+                <Text style={{ ...styles.aboutTitle, color: darkMode ? '#fff' : Colors.textDark }}>About Muslim Go Plus</Text>
+                <Text style={{ ...styles.aboutVersion, color: darkMode ? 'rgba(255,255,255,0.5)' : Colors.textMuted }}>Version 1.0.0 • Spiritual Growth</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -762,16 +788,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: '700', color: Colors.primary, marginBottom: Spacing.md },
   sectionLabel: { fontFamily: 'Manrope', fontSize: 12, color: Colors.textMuted },
 
-  moodMapCard: {
-    backgroundColor: '#fff',
-    padding: Spacing.xl,
-    borderRadius: 20,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 24,
-    elevation: 3,
-  },
+
   moodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   moodCell: { width: 36, height: 36, borderRadius: 6 },
   moodLegend: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: Spacing.xl },
@@ -873,22 +890,7 @@ const styles = StyleSheet.create({
   zakatCalcBtnText: { fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: '800', color: '#fff' },
   zakatNisabNote: { fontFamily: 'Manrope', fontSize: 12, color: Colors.textMuted, lineHeight: 20, textAlign: 'center', marginTop: 4 },
 
-  aboutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 20,
-    marginTop: Spacing['2xl'],
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 12,
-    elevation: 2,
-  },
+
   aboutLeft: {
     flexDirection: 'row',
     alignItems: 'center',

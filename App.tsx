@@ -83,12 +83,17 @@ export default function App() {
     let cleanupNotifications: (() => void) | undefined;
     const task = InteractionManager.runAfterInteractions(() => {
       cleanupNotifications = initializeNotificationEngine();
-      preloadAdhanAudio();
+      // preloadAdhanAudio is now async with retry logic — fire and forget but log errors
+      preloadAdhanAudio().catch((e) =>
+        console.warn('[App] Adhan audio preload failed:', e)
+      );
     });
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
-        syncPrayerNotifications();
+        // syncPrayerNotifications auto-detects settings changes via hash comparison
+        // so we don't need forceResync here — it will re-sync when settings change
+        syncPrayerNotifications().catch(() => {});
       }
     });
 

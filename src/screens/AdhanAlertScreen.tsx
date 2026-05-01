@@ -66,15 +66,21 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
   const prayerInfo = PRAYER_DESCRIPTIONS[currentPrayer];
 
   useEffect(() => {
-    // Play Adhan
-    const phraseEnabled =
-      prayer === 'Fajr' &&
-      (adhanSettings.prayers.Fajr.fajrPhrase ?? true);
+    // Only start playback if the notification manager hasn't already triggered it.
+    // handleAdhanTrigger in notificationManager.ts fires BEFORE navigating here,
+    // so isAdhanPlaying will be true if audio is already playing.
+    const alreadyPlaying = useAppStore.getState().isAdhanPlaying;
 
-    playFullAdhan(
-      adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah',
-      phraseEnabled
-    );
+    if (!alreadyPlaying) {
+      const phraseEnabled =
+        prayer === 'Fajr' &&
+        (adhanSettings.prayers.Fajr.fajrPhrase ?? true);
+
+      playFullAdhan(
+        adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah',
+        phraseEnabled
+      );
+    }
 
     // Fire haptics
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
