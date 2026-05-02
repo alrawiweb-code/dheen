@@ -80,6 +80,8 @@ export interface AppState {
   setLastReading: (reading: { surahNumber: number; surahName: string; ayahNumber: number }) => void;
 
   // Translations & TTS
+  showQuranTranslation: boolean;
+  setShowQuranTranslation: (show: boolean) => void;
   playTranslationAudio: boolean;
   setPlayTranslationAudio: (play: boolean) => void;
   translationLang: TranslationLangCode;
@@ -274,6 +276,8 @@ export const useAppStore = create<AppState>()(
   lastReading: null,
   setLastReading: (reading: { surahNumber: number; surahName: string; ayahNumber: number }) => set({ lastReading: reading }),
 
+  showQuranTranslation: true,
+  setShowQuranTranslation: (show: boolean) => set({ showQuranTranslation: show }),
   playTranslationAudio: false,
   setPlayTranslationAudio: (play: boolean) => set({ playTranslationAudio: play }),
   translationLang: 'en',

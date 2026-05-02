@@ -42,13 +42,47 @@ function cleanTiming(timeStr: string) {
   return timeStr.replace(/\s*\(.*?\)\s*/g, '');
 }
 
+export function getCalculationMethodForCountry(country?: string): number {
+  if (!country) return 2;
+  const c = country.trim().toLowerCase();
+
+  const methods: Record<number, string[]> = {
+    8: ['uae', 'united arab emirates', 'bahrain', 'oman'],
+    4: ['saudi arabia', 'ksa'],
+    9: ['kuwait'],
+    10: ['qatar'],
+    5: ['egypt'],
+    7: ['iran'],
+    13: ['turkey', 'türkiye'],
+    1: ['pakistan', 'india', 'bangladesh', 'afghanistan', 'sri lanka'],
+    11: ['singapore', 'malaysia', 'indonesia', 'brunei'],
+    12: ['france'],
+    14: ['russia'],
+    2: ['united states', 'usa', 'canada'],
+    3: ['united kingdom', 'uk', 'ireland', 'germany', 'austria', 'switzerland', 'netherlands', 'belgium', 'sweden', 'norway', 'denmark', 'finland', 'spain', 'italy', 'portugal', 'australia', 'new zealand', 'south africa', 'nigeria', 'ghana', 'kenya', 'morocco', 'algeria', 'tunisia', 'libya']
+  };
+
+  for (const [method, countries] of Object.entries(methods)) {
+    if (countries.includes(c)) {
+      return parseInt(method, 10);
+    }
+  }
+
+  return 2; // Default
+}
+
 export async function getCalendarForMonth(
   date: Date,
   options: LocationOptions
 ): Promise<DailyPrayerData[]> {
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
-  const cacheKey = `${PRAYER_CACHE_KEY}_${month}_${year}_${options.city || options.latitude}`;
+
+  const resolvedMethod = options.method !== undefined 
+    ? options.method 
+    : getCalculationMethodForCountry(options.country);
+
+  const cacheKey = `${PRAYER_CACHE_KEY}_${month}_${year}_${options.city || options.latitude}_m${resolvedMethod}`;
 
   const cached = await AsyncStorage.getItem(cacheKey);
   if (cached) {
@@ -59,12 +93,14 @@ export async function getCalendarForMonth(
 
   let url = '';
   if (options.city && options.country) {
-    url = `${ALADHAN_BASE}/calendarByCity/${year}/${month}?city=${encodeURIComponent(options.city)}&country=${encodeURIComponent(options.country)}&method=${options.method || 2}`;
+    url = `${ALADHAN_BASE}/calendarByCity/${year}/${month}?city=${encodeURIComponent(options.city)}&country=${encodeURIComponent(options.country)}&method=${resolvedMethod}`;
   } else if (options.latitude !== undefined && options.longitude !== undefined) {
-    url = `${ALADHAN_BASE}/calendar/${year}/${month}?latitude=${options.latitude}&longitude=${options.longitude}&method=${options.method || 2}`;
+    url = `${ALADHAN_BASE}/calendar/${year}/${month}?latitude=${options.latitude}&longitude=${options.longitude}&method=${resolvedMethod}`;
   } else {
     throw new Error('No location provided');
   }
+
+  console.log(`[PrayerTimes] Fetching method ${resolvedMethod} for country ${options.country || 'N/A'}: ${url}`);
 
   try {
     const res = await fetch(url);
@@ -138,16 +174,17 @@ export async function getPrayerTimesForDate(
 export async function fetchPrayerTimes(
   latitude: number,
   longitude: number,
-  method: number = 2,
+  country?: string,
 ): Promise<{ times: PrayerTimes; hijri: HijriDate; isOfflineFallback?: boolean }> {
-  return await getPrayerTimesForDate(new Date(), { latitude, longitude, method });
+  const method = getCalculationMethodForCountry(country);
+  return await getPrayerTimesForDate(new Date(), { latitude, longitude, country, method });
 }
 
 export async function fetchPrayerTimesByCity(
   city: string,
   country: string,
-  method: number = 2,
 ): Promise<{ times: PrayerTimes; hijri: HijriDate; isOfflineFallback?: boolean }> {
+  const method = getCalculationMethodForCountry(country);
   return await getPrayerTimesForDate(new Date(), { city, country, method });
 }
 

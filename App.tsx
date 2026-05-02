@@ -18,7 +18,7 @@ import {
 } from '@expo-google-fonts/scheherazade-new';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from './src/store/useAppStore';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppState } from 'react-native';
 

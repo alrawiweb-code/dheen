@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Platform,
   TextInput,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -56,7 +58,18 @@ const SLIDES = [
 export const OnboardingScreen = ({ navigation }: any) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [name, setName] = useState('');
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const { setProfile } = useAppStore();
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const goNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -179,14 +192,21 @@ export const OnboardingScreen = ({ navigation }: any) => {
 
           {/* SLIDE 2 — Enter App */}
           {currentIndex === 2 && (
-            <>
-              <View style={styles.archImageContainer}>
-                <Image
-                  source={require('../assets/arch.jpg')}
-                  style={styles.archImage}
-                  resizeMode="cover"
-                />
-              </View>
+            <KeyboardAvoidingView 
+              behavior="padding" 
+              keyboardVerticalOffset={80}
+              enabled={Platform.OS === 'android'} 
+              style={{ width: '100%', alignItems: 'center', flex: 1 }}
+            >
+              {!isKeyboardVisible && (
+                <View style={styles.archImageContainer}>
+                  <Image
+                    source={require('../assets/arch.jpg')}
+                    style={styles.archImage}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
               <View style={styles.textWrapperDark}>
                 <Text style={styles.titleDark}>{slide.title}</Text>
                 <Text style={styles.descriptionDark}>{slide.description}</Text>
@@ -215,7 +235,7 @@ export const OnboardingScreen = ({ navigation }: any) => {
                   PRIVACY FOCUSED
                 </Text>
               </View>
-            </>
+            </KeyboardAvoidingView>
           )}
 
         </View>

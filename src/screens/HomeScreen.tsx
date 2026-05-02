@@ -12,7 +12,6 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { DarkColors, LightColors } from '../theme/darkMode';
 import * as Haptics from 'expo-haptics';
@@ -24,6 +23,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../store/useAppStore';
 import { formatTime, getNextPrayer, getCurrentPrayerGradient, FALLBACK_TIMES, FALLBACK_HIJRI, fetchPrayerTimes, getTimeUntil } from '../services/prayerTimes';
 import { refreshDeviceCoordinates } from '../services/locationManager';
+import { requestNotificationPermissions } from '../services/notificationManager';
 
 const { width } = Dimensions.get('window');
 
@@ -80,7 +80,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         const lat = useAppStore.getState().profile.latitude || 25.2048;
         const lng = useAppStore.getState().profile.longitude || 55.2708;
-        const data = await fetchPrayerTimes(lat, lng);
+        const data = await fetchPrayerTimes(lat, lng, profile.country);
         if (isMounted) {
           setPrayerTimes(data.times);
           setHijri(data.hijri);
@@ -306,7 +306,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => navigation.navigate('AdhanSettings')}
+              onPress={async () => {
+                await requestNotificationPermissions();
+                navigation.navigate('AdhanSettings');
+              }}
               style={[
                 styles.setReminderBtn,
                 adhanSettings.masterEnabled && styles.setReminderBtnActive,

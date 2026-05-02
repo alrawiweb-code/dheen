@@ -40,6 +40,7 @@ export const QuranScreen = () => {
   const { 
     profile,
     lastReading,
+    showQuranTranslation, setShowQuranTranslation,
     playTranslationAudio, setPlayTranslationAudio,
     translationLang, setTranslationLang,
     languagePacks,
@@ -372,7 +373,23 @@ export const QuranScreen = () => {
               </TouchableOpacity>
             </View>
 
+            {/* Show Translation toggle */}
             <View style={styles.settingRow}>
+              <View>
+                <Text style={styles.settingTitle}>Show Translation</Text>
+                <Text style={styles.settingDesc}>Display the meaning of each Ayah below the Arabic</Text>
+              </View>
+              <Switch
+                value={showQuranTranslation}
+                onValueChange={setShowQuranTranslation}
+                trackColor={{ false: '#eae8e3', true: Colors.primary }}
+              />
+            </View>
+
+            {/* Play Translation Audio toggle — greyed when translation is hidden */}
+            <View style={[styles.settingRow, { opacity: showQuranTranslation ? 1 : 0.4 }]}
+              pointerEvents={showQuranTranslation ? 'auto' : 'none'}
+            >
               <View>
                 <Text style={styles.settingTitle}>Play Translation Audio</Text>
                 <Text style={styles.settingDesc}>Play descriptive text-to-speech after each Ayah</Text>
@@ -384,11 +401,11 @@ export const QuranScreen = () => {
               />
             </View>
 
-            <Text style={[styles.settingTitle, { marginTop: 24, marginBottom: 12, opacity: playTranslationAudio ? 1 : 0.5 }]}>
+            <Text style={[styles.settingTitle, { marginTop: 24, marginBottom: 12, opacity: (showQuranTranslation && playTranslationAudio) ? 1 : 0.4 }]}>
               Translation Language
             </Text>
 
-            <View style={[styles.langList, { opacity: playTranslationAudio ? 1 : 0.5 }]} pointerEvents={playTranslationAudio ? 'auto' : 'none'}>
+            <View style={[styles.langList, { opacity: (showQuranTranslation && playTranslationAudio) ? 1 : 0.4 }]} pointerEvents={(showQuranTranslation && playTranslationAudio) ? 'auto' : 'none'}>
               {[
                 { code: 'en', name: 'English (Default)' },
                 { code: 'ml', name: 'Malayalam' },

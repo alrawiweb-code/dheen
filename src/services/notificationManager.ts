@@ -416,40 +416,7 @@ export const syncPrayerNotifications = async (forceResync = false) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // DEVELOPER TESTING (TEMPORARY)
 // ─────────────────────────────────────────────────────────────────────────────
-export const scheduleTestAdhanNotification = async (targetDate: Date) => {
-  if (Platform.OS === 'web') return;
 
-  await ensureAndroidChannels();
-
-  const store = useAppStore.getState();
-  const prayerConfig = store.adhanSettings.prayers['Fajr'];
-  const fajrPhrase = prayerConfig.fajrPhrase ?? true;
-  
-  // Use current settings
-  const channelId = getChannelForPrayer('Fajr', prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
-  const soundFile = getSoundForPrayer('Fajr', prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
-
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `Test Adhan (Fajr)`,
-        body: `This is a test notification scheduled for ${targetDate.toLocaleTimeString()}`,
-        sound: soundFile ?? undefined,
-        data: {
-          intent: 'play_adhan',
-          prayer: 'Fajr',
-          voiceKey: prayerConfig.voice,
-          alertType: prayerConfig.alertType,
-        },
-      },
-      trigger: { type: 'date', date: targetDate, channelId } as any,
-    });
-    Alert.alert('Developer Test', `Adhan test scheduled for ${targetDate.toLocaleTimeString()}`);
-  } catch (err) {
-    console.warn('[NotificationManager] Test schedule failed', err);
-    Alert.alert('Error', 'Could not schedule test notification');
-  }
-};
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -518,16 +485,7 @@ export const initializeNotificationEngine = () => {
   // Ensure Android channels exist at boot
   ensureAndroidChannels();
 
-  // Fire permission request on boot
-  requestNotificationPermissions().then(async (granted) => {
-    if (!granted) {
-      console.log('App launched without notification permissions.');
-      return;
-    }
-    syncPrayerNotifications().catch((e) =>
-      console.warn('[NotificationManager] Boot sync failed:', e)
-    );
-  });
+
 
   // ── COLD START HANDLER ──────────────────────────────────────────
   // When the app was killed and user taps a notification to open it.

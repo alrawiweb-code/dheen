@@ -51,3 +51,14 @@ images/
 *removebg-preview.png
 *backup.png
 
+# Build artifacts — never commit AAB/APK files
+*.aab
+*.apk
+
+# Debug dumps
+dumpsys_notif.txt
+deen-home.html
+
+# Stitch design assets
+src/stitch-screens/
+assets/stitch/

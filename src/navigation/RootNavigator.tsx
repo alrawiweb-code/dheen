@@ -1,45 +1,55 @@
 import React, { Suspense } from 'react';
-import { ActivityIndicator } from 'react-native';
-import { View, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { useAppStore } from '../store/useAppStore';
 
-// Import Screens (to be implemented/already implemented)
-import { SplashScreen } from '../screens/SplashScreen';
+// Import Screens — eager: only screens needed at cold start or for tabs
 import { GreetingScreen } from '../screens/GreetingScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { SetNiyyahScreen } from '../screens/SetNiyyahScreen';
-import { SukoonScreen } from '../screens/SukoonScreen';
-import { DhikrScreen } from '../screens/DhikrScreen';
-// Lazy-load QiblaScreen so expo-sensors (Magnetometer) is never imported at
-// startup — it caused a silent module-level crash that produced the white screen.
-const QiblaScreen = React.lazy(() =>
-  import('../screens/QiblaScreen').then(m => ({ default: m.QiblaScreen }))
-);
-// Lazy-load QuranReader so @shopify/flash-list is never imported at startup.
-// flash-list's benchmark sub-modules fail to resolve in Metro's startup bundle,
-// causing a JS crash before React mounts → white screen.
-const QuranReader = React.lazy(() =>
-  import('../screens/QuranReader').then(m => ({ default: m.QuranReader }))
-);
-import { AdhanSettingsScreen } from '../screens/AdhanSettingsScreen';
-import { OneMinuteAllahScreen } from '../screens/OneMinuteAllahScreen';
-import { BreathingDhikrScreen } from '../screens/BreathingDhikrScreen';
 import { AdhanAlertScreen } from '../screens/AdhanAlertScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { QuranScreen } from '../screens/QuranScreen';
 import { PrayersScreen } from '../screens/PrayersScreen';
-import { DuasScreen } from '../screens/DuasScreen';
+// Lazy-loaded: heavy or rarely-visited screens deferred off the startup bundle
+const DuasScreen = React.lazy(() =>
+  import('../screens/DuasScreen').then(m => ({ default: m.DuasScreen }))
+);
+
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { AboutScreen } from '../screens/AboutScreen';
-import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
+
+// Lazy-loaded: heavy or rarely-visited screens deferred off the startup bundle
+const QiblaScreen = React.lazy(() =>
+  import('../screens/QiblaScreen').then(m => ({ default: m.QiblaScreen }))
+);
+const QuranReader = React.lazy(() =>
+  import('../screens/QuranReader').then(m => ({ default: m.QuranReader }))
+);
+const DhikrScreen = React.lazy(() =>
+  import('../screens/DhikrScreen').then(m => ({ default: m.DhikrScreen }))
+);
+const SukoonScreen = React.lazy(() =>
+  import('../screens/SukoonScreen').then(m => ({ default: m.SukoonScreen }))
+);
+const AdhanSettingsScreen = React.lazy(() =>
+  import('../screens/AdhanSettingsScreen').then(m => ({ default: m.AdhanSettingsScreen }))
+);
+const OneMinuteAllahScreen = React.lazy(() =>
+  import('../screens/OneMinuteAllahScreen').then(m => ({ default: m.OneMinuteAllahScreen }))
+);
+const BreathingDhikrScreen = React.lazy(() =>
+  import('../screens/BreathingDhikrScreen').then(m => ({ default: m.BreathingDhikrScreen }))
+);
+const PrivacyPolicyScreen = React.lazy(() =>
+  import('../screens/PrivacyPolicyScreen').then(m => ({ default: m.PrivacyPolicyScreen }))
+);
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -110,16 +120,32 @@ import { navigationRef } from './navigationRef';
 export { navigationRef };
 
 export const RootNavigator = () => {
+  const profile = useAppStore(state => state.profile);
+  const initialRouteName = profile.onboardingComplete ? 'Greeting' : 'Onboarding';
+
   return (
     <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+      <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false, animation: 'fade' }}>
         {/* Onboarding Flow */}
-        <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Greeting" component={GreetingScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="SetNiyyah" component={SetNiyyahScreen} />
-        <Stack.Screen name="Sukoon" component={SukoonScreen} />
-        <Stack.Screen name="Dhikr" component={DhikrScreen} />
+        <Stack.Screen
+          name="Sukoon"
+          children={(props) => (
+            <Suspense fallback={<ActivityIndicator size="large" color="#0f6d5b" style={{ flex: 1 }} />}>
+              <SukoonScreen {...props} />
+            </Suspense>
+          )}
+        />
+        <Stack.Screen
+          name="Dhikr"
+          children={(props) => (
+            <Suspense fallback={<ActivityIndicator size="large" color="#0f6d5b" style={{ flex: 1 }} />}>
+              <DhikrScreen {...props} />
+            </Suspense>
+          )}
+        />
         <Stack.Screen
           name="Qibla"
           children={(props) => (
@@ -129,8 +155,22 @@ export const RootNavigator = () => {
           )}
         />
 
-        <Stack.Screen name="AdhanSettings" component={AdhanSettingsScreen} />
-        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+        <Stack.Screen
+          name="AdhanSettings"
+          children={(props) => (
+            <Suspense fallback={<ActivityIndicator size="large" color="#0f6d5b" style={{ flex: 1 }} />}>
+              <AdhanSettingsScreen {...props} />
+            </Suspense>
+          )}
+        />
+        <Stack.Screen
+          name="PrivacyPolicy"
+          children={(props) => (
+            <Suspense fallback={<ActivityIndicator size="large" color="#0f6d5b" style={{ flex: 1 }} />}>
+              <PrivacyPolicyScreen {...props} />
+            </Suspense>
+          )}
+        />
         
         {/* Main App */}
         <Stack.Screen name="Root" component={MainTabs} />
@@ -143,7 +183,11 @@ export const RootNavigator = () => {
         />
         <Stack.Screen
           name="OneMinute"
-          component={OneMinuteAllahScreen}
+          children={(props) => (
+            <Suspense fallback={<ActivityIndicator size="large" color="#0f6d5b" style={{ flex: 1 }} />}>
+              <OneMinuteAllahScreen {...props} />
+            </Suspense>
+          )}
           options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }}
         />
         <Stack.Screen
@@ -153,7 +197,11 @@ export const RootNavigator = () => {
         />
         <Stack.Screen
           name="BreathingDhikr"
-          component={BreathingDhikrScreen}
+          children={(props) => (
+            <Suspense fallback={<ActivityIndicator size="large" color="#0f6d5b" style={{ flex: 1 }} />}>
+              <BreathingDhikrScreen {...props} />
+            </Suspense>
+          )}
           options={{ presentation: 'fullScreenModal', animation: 'fade' }}
         />
         {/* Quran Reader (full screen) — lazy-loaded to keep flash-list out of startup bundle */}

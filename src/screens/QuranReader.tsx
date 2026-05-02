@@ -105,6 +105,7 @@ const AyahItem = React.memo(({
   onLongPress,
   onPress,
   showTransliteration,
+  showTranslation,
   isStarred,
 }: {
   item: Ayah;
@@ -115,6 +116,7 @@ const AyahItem = React.memo(({
   onLongPress: (item: Ayah) => void;
   onPress: (item: Ayah) => void;
   showTransliteration: boolean;
+  showTranslation: boolean;
   isStarred: boolean;
 }) => {
   return (
@@ -162,9 +164,11 @@ const AyahItem = React.memo(({
           )}
         </View>
 
-        <Text style={[styles.translationText, isActive && styles.translationTextActive]}>
-          {item.translation}
-        </Text>
+        {showTranslation && (
+          <Text style={[styles.translationText, isActive && styles.translationTextActive]}>
+            {item.translation}
+          </Text>
+        )}
 
         {isStarred && (
           <Text style={styles.starBadge}>⭐</Text>
@@ -183,6 +187,7 @@ const AyahItem = React.memo(({
     prev.isLoadingThis === next.isLoadingThis &&
     prev.currentProgress === next.currentProgress &&
     prev.showTransliteration === next.showTransliteration &&
+    prev.showTranslation === next.showTranslation &&
     prev.isStarred === next.isStarred;
 });
 
@@ -336,6 +341,7 @@ export const QuranReader = ({ route, navigation }: any) => {
   const isAdhanPlaying = useAppStore(state => state.isAdhanPlaying);
   const incrementMilestone = useAppStore(state => state.incrementMilestone);
   const translationLang = useAppStore(state => state.translationLang);
+  const showQuranTranslation = useAppStore(state => state.showQuranTranslation);
 
   // Force-pause if system Adhan triggers globally
   useEffect(() => {
@@ -770,11 +776,12 @@ export const QuranReader = ({ route, navigation }: any) => {
         onLongPress={handleLongPress}
         onPress={handleAyahPress}
         showTransliteration={showTransliteration}
+        showTranslation={showQuranTranslation}
         isStarred={isStarred}
       />
     );
   }, [activeAyahNum, isPaused, isQueueLoading, currentProgress,
-    handleLongPress, handleAyahPress, showTransliteration,
+    handleLongPress, handleAyahPress, showTransliteration, showQuranTranslation,
     starredAyahs, ayahOfMyLife]);
 
   // ─────────────────────────────────────────────────────────────
