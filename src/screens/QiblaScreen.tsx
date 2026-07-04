@@ -13,7 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, NativeSpacing as Spacing } from '../theme';
-import { Magnetometer } from 'expo-sensors';
+import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
 import { useIsFocused } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -41,7 +41,6 @@ export const QiblaScreen = ({ navigation }: any) => {
   const { profile } = useAppStore();
   const [deviceHeading, setDeviceHeading] = useState(0);
   const [permissionError, setPermissionError] = useState(false);
-  const [needsCalibration, setNeedsCalibration] = useState(false);
   
   const subRef = useRef<any>(null);
   const isFocused = useIsFocused();
@@ -58,48 +57,37 @@ export const QiblaScreen = ({ navigation }: any) => {
     
     const initCompass = async () => {
       try {
-        const available = await Magnetometer.isAvailableAsync();
-        
-        // CRITICAL FIX: If component unmounted or lost focus during the await, abort immediately.
-        // Failing to do this causes an orphaned 20-FPS background listener to leak.
+        // Request location permission (needed for trueHeading with declination correction)
+        const { status } = await Location.requestForegroundPermissionsAsync();
         if (!isMounted) return;
-        
-        if (!available) {
+
+        if (status !== 'granted') {
           setPermissionError(true);
           return;
         }
-        
-        Magnetometer.setUpdateInterval(50); // Faster updates for smooth animation
-        
-        subRef.current = Magnetometer.addListener(data => {
+
+        // watchHeadingAsync provides trueHeading with magnetic declination applied
+        // by Android's GeomagneticField — this is the correct heading for Qibla.
+        // Falls back to magHeading if GPS fix is unavailable.
+        subRef.current = await Location.watchHeadingAsync((headingData) => {
           if (!isMounted) return;
-          
-          // Calibration detection (Earth's magnetic field is 25-65 µT)
-          const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
-          if (magnitude < 15 || magnitude > 85) {
-            setNeedsCalibration(true);
-          } else {
-            setNeedsCalibration(false);
-          }
 
-          let angle = Math.atan2(data.y, data.x) * (180 / Math.PI);
-          if (angle < 0) angle += 360;
-          
-          let heading = angle - 90;
-          if (heading < 0) heading += 360;
+          const heading =
+            headingData.trueHeading >= 0
+              ? headingData.trueHeading
+              : headingData.magHeading;
 
-          // Find shortest rotation path
+          // Find shortest rotation path for smooth animation
           let diff = heading - lastHeading.current;
           while (diff > 180) diff -= 360;
           while (diff < -180) diff += 360;
-          
           const targetHeading = lastHeading.current + diff;
           lastHeading.current = targetHeading;
-          
+
           setDeviceHeading(Math.round((targetHeading % 360 + 360) % 360));
 
           Animated.timing(animatedHeading, {
-            toValue: targetHeading,
+            toValue: -targetHeading,
             duration: 50,
             useNativeDriver: true,
           }).start();
@@ -204,16 +192,22 @@ export const QiblaScreen = ({ navigation }: any) => {
           </AnimatedBlurView>
         </View>
 
-        <BlurView intensity={Platform.OS === 'ios' ? 20 : 100} tint="dark" style={[styles.statusCard, needsCalibration && { borderColor: 'rgba(255, 165, 0, 0.5)' }]}>
-          <View style={[styles.statusIconBg, needsCalibration && { backgroundColor: 'rgba(255, 165, 0, 0.2)' }]}>
-            <MaterialIcons name={permissionError ? "gps-off" : needsCalibration ? "screen-rotation" : "gps-fixed"} size={24} color={needsCalibration ? "#FFA500" : "#a1f2db"} />
+        <BlurView intensity={100} tint="dark" style={styles.statusCard}>
+          <View style={styles.statusIconBg}>
+            <MaterialIcons
+              name={permissionError ? 'gps-off' : 'gps-fixed'}
+              size={24}
+              color={permissionError ? '#FFA500' : '#a1f2db'}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.statusTitle}>
-              {permissionError ? "Sensor Error" : needsCalibration ? "Calibration Needed" : "Compass Calibrated"}
+              {permissionError ? 'Location Error' : 'GPS Compass Active'}
             </Text>
             <Text style={styles.statusSub}>
-              {permissionError ? "Could not initialize compass" : needsCalibration ? "Move your phone in a figure-8 motion to calibrate" : "Accuracy is optimal"}
+              {permissionError
+                ? 'Could not access location — enable GPS in settings'
+                : 'Using fused GPS heading with declination correction'}
             </Text>
           </View>
         </BlurView>

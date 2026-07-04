@@ -20,6 +20,7 @@
         {
           "icon": "./assets/icon.png",
           "color": "#0F6D5B",
+          "taskName": "BACKGROUND_NOTIFICATION_TASK",
           "sounds": [
             "./assets/adhan/azan_makkah.mp3",
             "./assets/adhan/azan_madinah.mp3",

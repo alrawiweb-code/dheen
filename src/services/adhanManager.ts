@@ -25,6 +25,23 @@ const FAJR_WITH_PHRASE_ASSET = require('../../assets/adhan/fajr_bank.mp3');
 let globalAdhanSound: Audio.Sound | null = null;
 let shortAdhanTimeoutMap: NodeJS.Timeout | null = null;
 
+// Playback mutex — prevents concurrent playFullAdhan/playShortAdhan/playAdhanPreview
+// from racing to create Audio.Sound instances, leaving untracked sounds playing.
+let _playbackLocked = false;
+
+async function withPlaybackLock<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  if (_playbackLocked) {
+    console.log('[AdhanManager] Playback locked — ignoring concurrent request.');
+    return undefined;
+  }
+  _playbackLocked = true;
+  try {
+    return await fn();
+  } finally {
+    _playbackLocked = false;
+  }
+}
+
 // ── Ensure audio subsystem is enabled (required on some Android devices) ──
 let audioInitialized = false;
 async function ensureAudioEnabled(): Promise<void> {
@@ -168,10 +185,16 @@ export const handleAdhanTrigger = async (
   }
 };
 
-export const playAdhanPreview = async (
+export const playAdhanPreview = (
   voiceKey: string,
   onLoadingStatusChange?: (loading: boolean) => void
-): Promise<void> => {
+): Promise<void | undefined> =>
+  withPlaybackLock(() => _playAdhanPreview(voiceKey, onLoadingStatusChange));
+
+async function _playAdhanPreview(
+  voiceKey: string,
+  onLoadingStatusChange?: (loading: boolean) => void
+): Promise<void> {
   console.log(`[AdhanManager] Triggering Preview for: ${voiceKey}`);
   
   await stopAdhan();
@@ -223,10 +246,16 @@ export const playAdhanPreview = async (
  * 
  * On failure, falls back to vibration pattern so the user is never silently missed.
  */
-export const playFullAdhan = async (
+export const playFullAdhan = (
   voiceKey: string,
   useFajrWithPhrase: boolean = false
-): Promise<void> => {
+): Promise<void | undefined> =>
+  withPlaybackLock(() => _playFullAdhan(voiceKey, useFajrWithPhrase));
+
+async function _playFullAdhan(
+  voiceKey: string,
+  useFajrWithPhrase: boolean = false
+): Promise<void> {
   console.log(`[AdhanManager] Playing full Adhan: ${voiceKey} | fajrWithPhrase=${useFajrWithPhrase}`);
   
   await stopAdhan();
@@ -284,7 +313,10 @@ export const playFullAdhan = async (
   }
 };
 
-export const playShortAdhan = async (voiceKey: string): Promise<void> => {
+export const playShortAdhan = (voiceKey: string): Promise<void | undefined> =>
+  withPlaybackLock(() => _playShortAdhan(voiceKey));
+
+async function _playShortAdhan(voiceKey: string): Promise<void> {
   console.log(`[AdhanManager] Playing short Adhan clip: ${voiceKey}`);
   
   await stopAdhan();

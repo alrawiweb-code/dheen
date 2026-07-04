@@ -1,11 +1,29 @@
 import * as Notifications from 'expo-notifications';
 import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { useAppStore } from '../store/useAppStore';
 import { PrayerTimes, getCalendarForMonth, DailyPrayerData } from './prayerTimes';
 import { handleAdhanTrigger } from './adhanManager';
 import { Prayer } from '../theme';
 import { navigationRef } from '../navigation/navigationRef';
+import { updatePrayerStatusNotification } from './prayerStatusManager';
+import { updatePrayerStatusNotification } from './prayerStatusManager';
+import * as TaskManager from 'expo-task-manager';
+
+const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
+
+TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
+  console.log('[NotificationManager] Background task triggered (Boot completed).');
+  
+  let attempts = 0;
+  while (!useAppStore.persist?.hasHydrated?.() && attempts < 10) {
+    await new Promise(r => setTimeout(r, 200));
+    attempts++;
+  }
+  
+  await syncPrayerNotifications(true);
+});
 
 const NOTIFICATION_CACHE_KEY = '@dheen_notifications_synced_month';
 const NOTIFICATION_SETTINGS_HASH_KEY = '@dheen_notifications_settings_hash';
@@ -27,14 +45,17 @@ const VOICE_SOUND_MAP: Record<string, string> = {
 const FAJR_PHRASE_SOUND = 'fajr_bank.mp3';
 
 // One channel per voice + one for Fajr phrase + one for beep + one for silent
+// v6: bumped from v5 because Android channels are permanent — broken v5 channels
+// (which referenced missing sound files before app.json was corrected) cannot be
+// repaired. A new channel ID is the only way to get a fresh channel on existing installs.
 const CHANNEL_IDS: Record<string, string> = {
-  makkah:      'adhan_makkah_v5',
-  madinah:     'adhan_madinah_v5',
-  alaqsa:      'adhan_alaqsa_v5',
-  fajr_phrase: 'adhan_fajr_phrase_v5',
-  beep:        'adhan_beep_v5',
-  silent:      'adhan_silent_v5',
-  pre_alert:   'adhan_pre_alert_v5',
+  makkah:      'adhan_makkah_v6',
+  madinah:     'adhan_madinah_v6',
+  alaqsa:      'adhan_alaqsa_v6',
+  fajr_phrase: 'adhan_fajr_phrase_v6',
+  beep:        'adhan_beep_v6',
+  silent:      'adhan_silent_v6',
+  pre_alert:   'adhan_pre_alert_v6',
 };
 
 // ── Android Notification Channels ───────────────────────────────────────────
@@ -56,7 +77,8 @@ export async function ensureAndroidChannels(): Promise<void> {
       await Notifications.setNotificationChannelAsync(channelId, {
         name: `Adhan – ${voiceKey === 'fajr_phrase' ? 'Fajr (Special)' : voiceKey.charAt(0).toUpperCase() + voiceKey.slice(1)}`,
         description: 'Full Adhan recitation at prayer time',
-        importance: Notifications.AndroidImportance.HIGH,
+        // MAX is required for alarm-class audio. HIGH can be silenced by DND.
+        importance: Notifications.AndroidImportance.MAX,
         sound: soundFile,
         vibrationPattern: [0, 500, 200, 500],
         enableVibrate: true,
@@ -75,10 +97,11 @@ export async function ensureAndroidChannels(): Promise<void> {
     await Notifications.setNotificationChannelAsync(CHANNEL_IDS.beep, {
       name: 'Adhan – Short Alert',
       description: 'Short beep alert at prayer time',
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.MAX,
       sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
       enableVibrate: true,
+      bypassDnd: true, // Prayer alerts should bypass Do Not Disturb
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
@@ -86,10 +109,11 @@ export async function ensureAndroidChannels(): Promise<void> {
     await Notifications.setNotificationChannelAsync(CHANNEL_IDS.silent, {
       name: 'Adhan – Silent Vibrate',
       description: 'Vibration-only alert at prayer time',
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.MAX,
       sound: null,
       vibrationPattern: [0, 500, 200, 500, 200, 500],
       enableVibrate: true,
+      bypassDnd: true, // Prayer alerts should bypass Do Not Disturb
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
@@ -113,7 +137,7 @@ export async function ensureAndroidChannels(): Promise<void> {
  * Returns the correct Android channel ID for a given prayer configuration.
  * This determines which sound the OS plays automatically at trigger time.
  */
-function getChannelForPrayer(
+export function getChannelForPrayer(
   prayer: string,
   alertType: string,
   voiceKey: string,
@@ -200,11 +224,59 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
 };
 
 /**
- * Generates a simple hash of the current adhan settings.
- * Used to detect when the user changes settings mid-month so we
- * can force a re-sync of all scheduled notifications.
+ * On Android 12 (API 31-32), SCHEDULE_EXACT_ALARM requires the user to
+ * manually grant "Alarms & Reminders" in system settings.
+ * On Android 13+ with USE_EXACT_ALARM declared in the manifest,
+ * the OS grants it automatically — no user dialog needed or possible.
  */
-function getSettingsHash(settings: any): string {
+export async function requestExactAlarmPermission(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  // Only needed on API 31-32. On API 33+ USE_EXACT_ALARM is auto-granted.
+  // Platform.Version is the API level integer on Android.
+  const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : parseInt(Platform.Version, 10);
+  if (apiLevel >= 33) {
+    console.log('[NotificationManager] API 33+ — USE_EXACT_ALARM auto-granted, skipping dialog.');
+    return;
+  }
+  try {
+    await IntentLauncher.startActivityAsync(
+      'android.settings.REQUEST_SCHEDULE_EXACT_ALARM' as any
+    );
+  } catch (e) {
+    console.log('[NotificationManager] Could not open exact alarm settings:', e);
+  }
+}
+
+/**
+ * Directly prompts the user to whitelist the app from battery optimization.
+ * This is the most impactful fix for OEM-specific late/missing Adhan
+ * on Samsung, Xiaomi, Oppo, OnePlus etc.
+ */
+export async function requestBatteryOptimizationWhitelist(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    // Direct prompt: shows "Allow [App] to always run in background?" dialog
+    await IntentLauncher.startActivityAsync(
+      'android.intent.action.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' as any,
+      { data: 'package:com.alrawi.muslimpro' }
+    );
+  } catch (e) {
+    // Fallback: open the general battery optimization list for the user to find the app
+    try {
+      await IntentLauncher.startActivityAsync(
+        IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+      );
+    } catch (_) {
+      console.warn('[NotificationManager] Could not open battery optimization settings:', e);
+    }
+  }
+}
+
+/**
+ * Generates a stable hash of adhan settings + location.
+ * Includes lat/lng/city/country so a location change forces a re-sync.
+ */
+function getSettingsHash(settings: any, profile?: any): string {
   try {
     const relevant = {
       me: settings.masterEnabled,
@@ -215,6 +287,11 @@ function getSettingsHash(settings: any): string {
       qf: settings.quietFrom,
       qt: settings.quietTo,
       afq: settings.allowFajrDuringQuiet,
+      // Location fields — so moving city forces a resync
+      lat: profile?.latitude?.toFixed(2) ?? '',
+      lng: profile?.longitude?.toFixed(2) ?? '',
+      city: profile?.city ?? '',
+      country: profile?.country ?? '',
     };
     return JSON.stringify(relevant);
   } catch {
@@ -230,30 +307,51 @@ function getSettingsHash(settings: any): string {
  * When the notification fires, the OS plays the channel's sound automatically —
  * even if the app is completely killed.
  */
+let isSyncing = false;
+
 export const syncPrayerNotifications = async (forceResync = false) => {
+  if (isSyncing) return;
   if (Platform.OS === 'web') return;
 
   const store = useAppStore.getState();
   const settings = store.adhanSettings;
+  const profile = store.profile;
 
-  // ── Smart re-sync guard ──────────────────────────────────────────
+  // ── Smart re-sync guard ──────────────────────────────────
   try {
     const lastSync = await AsyncStorage.getItem(NOTIFICATION_CACHE_KEY);
     const lastHash = await AsyncStorage.getItem(NOTIFICATION_SETTINGS_HASH_KEY);
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentHash = getSettingsHash(settings);
+    const currentHash = getSettingsHash(settings, profile);
 
-    if (lastSync === currentMonthKey && lastHash === currentHash && !forceResync) {
+    // If master is enabled, check if we actually have scheduled alarms.
+    // If we have 0 scheduled alarms but master is enabled, we need to force rescheduling.
+    let hasScheduled = false;
+    if (settings.masterEnabled) {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      hasScheduled = scheduled.length > 0;
+    }
+
+    if (
+      lastSync === currentMonthKey &&
+      lastHash === currentHash &&
+      (!settings.masterEnabled || hasScheduled) &&
+      !forceResync
+    ) {
       console.log(`[NotificationManager] Already scheduled for ${currentMonthKey} with current settings, skipping.`);
       return;
     }
   } catch (_) {}
 
+  isSyncing = true;
+  
+  try {
+
   // Ensure all Android channels exist before scheduling
   await ensureAndroidChannels();
 
-  const profile = store.profile;
+  // profile already read above the re-sync guard
 
   // Clear existing to avoid duplicate overlaps
   await Notifications.cancelAllScheduledNotificationsAsync();
@@ -299,7 +397,8 @@ export const syncPrayerNotifications = async (forceResync = false) => {
 
   const prayers: Prayer[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
   let scheduledCount = 0;
-  const MAX_NOTIFICATIONS = Platform.OS === 'ios' ? 60 : 300;
+  // Android supports hundreds of exact alarms. 200 covers 30 days × 5 prayers × 2 (with pre-alerts).
+  const MAX_NOTIFICATIONS = 200;
 
   for (let offset = 0; offset < 30; offset++) {
     if (scheduledCount >= MAX_NOTIFICATIONS) break;
@@ -363,7 +462,6 @@ export const syncPrayerNotifications = async (forceResync = false) => {
             body: `It's time for ${prayer} prayer`,
             // The sound field tells the OS WHAT to play.
             // On Android, this references a file in res/raw/ (bundled via app.json plugin).
-            // On iOS, this references a bundled sound file (limited to 30s).
             sound: soundFile ?? undefined,
             data: {
               intent: 'play_adhan',
@@ -372,30 +470,56 @@ export const syncPrayerNotifications = async (forceResync = false) => {
               alertType: prayerConfig.alertType,
             },
           },
-          trigger: { type: 'date', date: triggerDate, channelId } as any,
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
+            channelId,
+          },
         });
         scheduledCount++;
       } catch (scheduleError) {
         console.warn(`[NotificationManager] Failed to schedule ${prayer} on ${dayStr}:`, scheduleError);
       }
 
-      // Pre-alert
+      // Pre-alert (with quiet hours check)
       if (prayerConfig.preAlert > 0 && scheduledCount < MAX_NOTIFICATIONS) {
         const preAlertDate = new Date(triggerDate.getTime() - prayerConfig.preAlert * 60 * 1000);
         if (preAlertDate > now) {
-          try {
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: `${prayer} in ${prayerConfig.preAlert} minutes`,
-                body: `Prepare for ${prayer} prayer`,
-                sound: 'default',
-                data: { intent: 'pre_alert', prayer },
-              },
-              trigger: { type: 'date', date: preAlertDate, channelId: CHANNEL_IDS.pre_alert } as any,
-            });
-            scheduledCount++;
-          } catch (preAlertError) {
-            console.warn(`[NotificationManager] Failed to schedule pre-alert for ${prayer}:`, preAlertError);
+          // Apply quiet hours check to pre-alert too
+          let preAlertInQuiet = false;
+          if (settings.quietHoursEnabled) {
+            const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
+            const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
+            const preH = preAlertDate.getHours();
+            const preM = preAlertDate.getMinutes();
+            const preMins = preH * 60 + preM;
+            const fromMins = quietFromH * 60 + quietFromM;
+            const toMins = quietToH * 60 + quietToM;
+            preAlertInQuiet = fromMins > toMins
+              ? (preMins >= fromMins || preMins < toMins)
+              : (preMins >= fromMins && preMins < toMins);
+            if (prayer === 'Fajr' && settings.allowFajrDuringQuiet) preAlertInQuiet = false;
+          }
+
+          if (!preAlertInQuiet) {
+            try {
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: `${prayer} in ${prayerConfig.preAlert} minutes`,
+                  body: `Prepare for ${prayer} prayer`,
+                  sound: 'default',
+                  data: { intent: 'pre_alert', prayer },
+                },
+                trigger: {
+                  type: Notifications.SchedulableTriggerInputTypes.DATE,
+                  date: preAlertDate,
+                  channelId: CHANNEL_IDS.pre_alert,
+                },
+              });
+              scheduledCount++;
+            } catch (preAlertError) {
+              console.warn(`[NotificationManager] Failed to schedule pre-alert for ${prayer}:`, preAlertError);
+            }
           }
         }
       }
@@ -407,19 +531,109 @@ export const syncPrayerNotifications = async (forceResync = false) => {
     const syncNow = new Date();
     const currentMonthKey = `${syncNow.getFullYear()}-${String(syncNow.getMonth() + 1).padStart(2, '0')}`;
     await AsyncStorage.setItem(NOTIFICATION_CACHE_KEY, currentMonthKey);
-    await AsyncStorage.setItem(NOTIFICATION_SETTINGS_HASH_KEY, getSettingsHash(settings));
+    // Save hash with location so future location changes invalidate the cache
+    await AsyncStorage.setItem(NOTIFICATION_SETTINGS_HASH_KEY, getSettingsHash(settings, profile));
   } catch (_) {}
 
+  // Also sync the persistent prayer status notification if enabled
+  await updatePrayerStatusNotification();
+
   console.log(`[NotificationManager] Successfully scheduled ${scheduledCount} notifications for the next 30 days.`);
+
+  // ── Diagnostic: verify actual scheduled count ─────────────────────────────
+  // If this logs 0 after a successful sync, the problem is in scheduling (e.g.
+  // permissions, exact alarm denied, all times already past).
+  // If this logs >0, the problem is in delivery (e.g. channel sound missing,
+  // channel misconfigured, battery optimisation killing the alarm).
+  if (Platform.OS === 'android') {
+    try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      // Filter out the prayer status TIME_INTERVAL notification from the count
+      const adhanOnly = scheduled.filter(
+        n => n.content.data?.intent !== 'prayer_status'
+      );
+      console.log(
+        `[NotificationManager] DIAGNOSTIC: ${adhanOnly.length} Adhan notifications currently in the schedule queue.` +
+        ` (${adhanOnly.length === 0 ? 'PROBLEM IS IN SCHEDULING' : 'Scheduling OK — if silent, problem is in DELIVERY/CHANNEL'})`
+      );
+    } catch (e) {
+      console.warn('[NotificationManager] DIAGNOSTIC: Could not read scheduled notifications:', e);
+    }
+  }
+  } finally {
+    isSyncing = false;
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEVELOPER TESTING (TEMPORARY)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Developer Testing: Schedules a test notification 30 seconds in the future
+ * using the EXACT same channel and payload as a real prayer.
+ */
+export async function scheduleTestAdhan(
+  prayer: string,
+  voiceKey: string,
+  alertType: string,
+  fajrPhrase: boolean
+): Promise<Date> {
+  if (Platform.OS === 'web') throw new Error('Not supported on web');
 
+  await ensureAndroidChannels();
 
-// ─────────────────────────────────────────────────────────────────────────────
+  const triggerDate = new Date(Date.now() + 30 * 1000); // 30 seconds from now
+  const channelId = getChannelForPrayer(prayer, alertType, voiceKey, fajrPhrase);
+  const soundFile = getSoundForPrayer(prayer, alertType, voiceKey, fajrPhrase);
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: `[TEST] ${prayer} Prayer Time`,
+      body: `Test notification scheduled for ${triggerDate.toLocaleTimeString()}`,
+      sound: soundFile ?? undefined,
+      data: {
+        intent: 'play_adhan',
+        prayer,
+        voiceKey,
+        alertType,
+        isTest: true,
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: triggerDate,
+      channelId,
+    },
+  });
+
+  return triggerDate;
+}
+
+/**
+ * Returns debug info for the settings screen.
+ */
+export async function getDebugNotificationInfo() {
+  if (Platform.OS === 'web') return { scheduledCount: 0, notificationGranted: false, exactAlarmGranted: false };
+  
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const perms = await Notifications.getPermissionsAsync();
+  
+  let exactAlarmGranted = true; // Auto-granted on iOS and Android 13+ (with USE_EXACT_ALARM)
+  if (Platform.OS === 'android') {
+    const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
+    if (apiLevel < 33) {
+      // On API 31-32, it's a special permission we can't easily check synchronously via expo-notifications
+      exactAlarmGranted = false; // Just flag it as potentially needing attention
+    }
+  }
+
+  return {
+    scheduledCount: scheduled.length,
+    notificationGranted: perms.status === 'granted',
+    exactAlarmGranted,
+  };
+}
 // NOTIFICATION LISTENERS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -429,7 +643,7 @@ export const syncPrayerNotifications = async (forceResync = false) => {
 function navigateToAdhanAlert(prayer: string, retries = 5): void {
   if (navigationRef.isReady()) {
     try {
-      navigationRef.navigate('AdhanAlert' as never, { prayer } as never);
+      (navigationRef.navigate as any)('AdhanAlert', { prayer });
     } catch (e) {
       console.warn('[NotificationManager] Navigation failed:', e);
     }
@@ -485,7 +699,10 @@ export const initializeNotificationEngine = () => {
   // Ensure Android channels exist at boot
   ensureAndroidChannels();
 
-
+  // Register background task for boot completed
+  Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK).catch(e => {
+    console.warn('[NotificationManager] Failed to register background task:', e);
+  });
 
   // ── COLD START HANDLER ──────────────────────────────────────────
   // When the app was killed and user taps a notification to open it.

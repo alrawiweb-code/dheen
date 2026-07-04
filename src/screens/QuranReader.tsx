@@ -13,6 +13,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { FlashList, FlashListRef } from '@shopify/flash-list';
+// flash-list 2.x dropped estimatedItemSize from TS props but it works at runtime
+const AnyFlashList = FlashList as React.ComponentType<any>;
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -148,8 +150,8 @@ const AyahItem = React.memo(({
       </View>
 
       {/* ── Transliteration (hidden by default) ── */}
-      {showTransliteration && item.transliteration ? (
-        <Text style={styles.transliterationText}>{item.transliteration}</Text>
+      {showTransliteration ? (
+        <Text style={styles.transliterationText}>{item.translation}</Text>
       ) : null}
 
       {/* ── Translation row ── */}
@@ -893,17 +895,17 @@ export const QuranReader = ({ route, navigation }: any) => {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlashList
+        <AnyFlashList
           ref={flatListRef}
           data={ayahs}
           estimatedItemSize={150}
-          keyExtractor={(a) => String(a.number)}
+          keyExtractor={(a: Ayah) => String(a.number)}
           renderItem={renderAyah}
-          onScroll={(evt) => {
+          onScroll={(evt: { nativeEvent: { contentOffset: { y: number } } }) => {
             currentScrollOffsetRef.current = evt.nativeEvent.contentOffset.y;
           }}
           scrollEventThrottle={16}
-          onContentSizeChange={(_w, h) => {
+          onContentSizeChange={(_w: number, h: number) => {
             totalContentHeightRef.current = h;
           }}
           contentContainerStyle={[

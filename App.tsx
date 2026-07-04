@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreenExpo from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { initializeNotificationEngine, syncPrayerNotifications } from './src/services/notificationManager';
+import { updatePrayerStatusNotification } from './src/services/prayerStatusManager';
 import { preloadAdhanAudio } from './src/services/adhanManager';
 import {
   ScheherazadeNew_400Regular,
@@ -69,6 +70,25 @@ export default function App() {
   });
   const fontsReady = fontsLoaded || !!fontError;
 
+  // ── Zustand store hydration gate ──────────────────────────────
+  // Block rendering until AsyncStorage has rehydrated the store.
+  // Without this, onboardingComplete defaults to false and returning
+  // users briefly see the Onboarding screen before state loads.
+  const [storeHydrated, setStoreHydrated] = useState(
+    () => useAppStore.persist.hasHydrated()
+  );
+
+  useEffect(() => {
+    if (useAppStore.persist.hasHydrated()) {
+      setStoreHydrated(true);
+      return;
+    }
+    const unsub = useAppStore.persist.onFinishHydration(() => {
+      setStoreHydrated(true);
+    });
+    return unsub;
+  }, []);
+
   // ── Hide splash as soon as fonts are ready ────────────────────
   // Quran data is NOT an app dependency — it loads on user action only.
   useEffect(() => {
@@ -94,6 +114,7 @@ export default function App() {
         // syncPrayerNotifications auto-detects settings changes via hash comparison
         // so we don't need forceResync here — it will re-sync when settings change
         syncPrayerNotifications().catch(() => {});
+        updatePrayerStatusNotification().catch(() => {});
       }
     });
 
@@ -107,8 +128,8 @@ export default function App() {
   // ── Daily prayer reset ────────────────────────────────────────
   // (Handled internally by Zustand persistence and HomeScreen)
 
-  // ── Render: waiting for fonts ─────────────────────────────────
-  if (!fontsReady) {
+  // ── Render: waiting for fonts + store hydration ───────────────
+  if (!fontsReady || !storeHydrated) {
     return (
       <View style={[styles.container, styles.centered]}>
         <StatusBar style="dark" translucent />

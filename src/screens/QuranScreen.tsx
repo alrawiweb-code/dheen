@@ -255,7 +255,7 @@ export const QuranScreen = () => {
   ), [lastReading, filtered.length, darkMode, navigation]);
 
   return (
-    <ScreenWrapper style={[styles.container, { backgroundColor: darkMode ? '#001a12' : Colors.background }]}>
+    <ScreenWrapper style={StyleSheet.flatten([styles.container, { backgroundColor: darkMode ? '#001a12' : Colors.background }])}>
       <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
 
       {/* Top Header */}

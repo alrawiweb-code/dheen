@@ -10,6 +10,7 @@ import {
   StatusBar,
   Modal,
   Image,
+  AppState,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -93,16 +94,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
     initLivePrayers();
     return () => { isMounted = false; };
-  }, [profile.autoLocation]);
+  }, [profile.autoLocation, profile.city, profile.country, profile.latitude, profile.longitude]);
 
-  // Effect 2: Daily reset check — runs once on mount only
+  // Effect 2: Daily reset check — also fires when app returns to foreground after midnight
   useEffect(() => {
-    if (lastPrayerResetDate !== new Date().toDateString()) {
-      resetDailyPrayers();
-    }
-    // Reset niyyah if it's from a previous day
-    resetNiyyahIfNewDay();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const checkReset = () => {
+      if (lastPrayerResetDate !== new Date().toDateString()) {
+        resetDailyPrayers();
+      }
+      resetNiyyahIfNewDay();
+    };
+
+    checkReset(); // run immediately on mount
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') checkReset();
+    });
+
+    return () => sub.remove();
+  }, [lastPrayerResetDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const nextTimeStr = nextPrayer?.nextTime;
 

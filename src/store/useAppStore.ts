@@ -27,6 +27,7 @@ export interface AdhanSettings {
   allowFajrDuringQuiet: boolean;
   jumuahEnabled: boolean;
   jumuahTime: string; // '12:00'
+  prayerStatusNotificationEnabled: boolean;
 }
 
 export interface SukoonEntry {
@@ -125,6 +126,10 @@ export interface AppState {
   };
   incrementMilestone: (key: keyof AppState['milestones']) => void;
   decrementMilestone: (key: keyof AppState['milestones']) => void;
+
+  // One-time flags
+  batteryPromptShown: boolean;
+  setBatteryPromptShown: (shown: boolean) => void;
 }
 
 const defaultAdhanPrayerSettings: AdhanPrayerSettings = {
@@ -150,6 +155,7 @@ const defaultAdhanSettings: AdhanSettings = {
   allowFajrDuringQuiet: true,
   jumuahEnabled: true,
   jumuahTime: '12:00',
+  prayerStatusNotificationEnabled: false,
 };
 
 export const useAppStore = create<AppState>()(
@@ -238,22 +244,35 @@ export const useAppStore = create<AppState>()(
     }),
 
   resetDailyPrayers: () =>
-    set({
-      prayerStatuses: {
-        Fajr: 'pending',
-        Dhuhr: 'pending',
-        Asr: 'pending',
-        Maghrib: 'pending',
-        Isha: 'pending',
-      },
-      prayerMoods: {
-        Fajr: null,
-        Dhuhr: null,
-        Asr: null,
-        Maghrib: null,
-        Isha: null,
-      },
-      lastPrayerResetDate: new Date().toDateString(),
+    set((state: AppState) => {
+      const today = new Date().toDateString();
+      const yesterday = new Date(Date.now() - 86_400_000).toDateString();
+      const lastStreak = state.milestones.lastStreakDate;
+
+      // Break the streak if last full-prayer day was neither today nor yesterday
+      const streakBroken =
+        !!lastStreak && lastStreak !== today && lastStreak !== yesterday;
+
+      return {
+        prayerStatuses: {
+          Fajr: 'pending',
+          Dhuhr: 'pending',
+          Asr: 'pending',
+          Maghrib: 'pending',
+          Isha: 'pending',
+        },
+        prayerMoods: {
+          Fajr: null,
+          Dhuhr: null,
+          Asr: null,
+          Maghrib: null,
+          Isha: null,
+        },
+        lastPrayerResetDate: new Date().toDateString(),
+        ...(streakBroken
+          ? { milestones: { ...state.milestones, streakDays: 0 } }
+          : {}),
+      };
     }),
 
   lastPrayerResetDate: new Date().toDateString(),
@@ -376,11 +395,15 @@ export const useAppStore = create<AppState>()(
           : Math.max(0, (state.milestones[key] as number) - 1),
       },
     })),
+
+  // One-time flags
+  batteryPromptShown: false,
+  setBatteryPromptShown: (shown: boolean) => set({ batteryPromptShown: shown }),
     }),
     {
       name: 'dheen-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 8,
+      version: 10,
       partialize: (state) => {
         const { isAdhanPlaying, ...rest } = state;
         return rest;
@@ -409,6 +432,14 @@ export const useAppStore = create<AppState>()(
             ...state,
             dhikr: { count: 0, totalCount: 0, cycleCount: 0, target: 33 },
           };
+        }
+        if (_version < 9) {
+          state = { ...state, batteryPromptShown: false };
+        }
+        if (_version < 10) {
+          if (state.adhanSettings) {
+            state.adhanSettings.prayerStatusNotificationEnabled = false;
+          }
         }
         return state;
       },

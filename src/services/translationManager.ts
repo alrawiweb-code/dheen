@@ -25,8 +25,16 @@ export const downloadLanguagePack = async (lang: TranslationLangCode) => {
   setLanguagePackStatus(lang, 'downloading');
 
   try {
-    // Single network bulk fetch
-    const res = await fetch(`${QURAN_API_BASE}/quran/${edition}`);
+    // Single network bulk fetch with timeout — prevents permanent 'downloading' state on stalled connections
+    const controller = new AbortController();
+    // 90 seconds is generous for a 4MB download on slow mobile
+    const timer = setTimeout(() => controller.abort(), 90_000);
+    let res: Response;
+    try {
+      res = await fetch(`${QURAN_API_BASE}/quran/${edition}`, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) throw new Error('Failed to fetch full Quran translation');
     
     const json = await res.json();

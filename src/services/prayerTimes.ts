@@ -82,7 +82,11 @@ export async function getCalendarForMonth(
     ? options.method 
     : getCalculationMethodForCountry(options.country);
 
-  const cacheKey = `${PRAYER_CACHE_KEY}_${month}_${year}_${options.city || options.latitude}_m${resolvedMethod}`;
+  const cacheKey = `${PRAYER_CACHE_KEY}_${month}_${year}_${
+    options.city && options.country
+      ? `${options.city.toLowerCase()}_${options.country.toLowerCase()}`
+      : `${options.latitude?.toFixed(3)}_${options.longitude?.toFixed(3)}`
+  }_m${resolvedMethod}`;
 
   const cached = await AsyncStorage.getItem(cacheKey);
   if (cached) {

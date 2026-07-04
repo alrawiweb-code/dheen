@@ -24,7 +24,7 @@ import {
   playShortAdhan,
   vibrateAdhan,
 } from '../services/adhanManager';
-import { syncPrayerNotifications, requestNotificationPermissions } from '../services/notificationManager';
+import { syncPrayerNotifications, requestNotificationPermissions, requestExactAlarmPermission, requestBatteryOptimizationWhitelist, scheduleTestAdhan, getDebugNotificationInfo, getChannelForPrayer } from '../services/notificationManager';
 import { refreshDeviceCoordinates } from '../services/locationManager';
 import { isCached } from '../services/audioCache';
 import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper';
@@ -44,6 +44,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
     adhanSettings, updateAdhanSettings, updatePrayerAdhanSettings,
     isAdhanPlaying,
     darkMode,
+    batteryPromptShown, setBatteryPromptShown,
   } = useAppStore();
 
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -53,6 +54,22 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
   const [showSavedToast, setShowSavedToast] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce refs — cancel in-flight async chain if toggle is flipped rapidly
+  const pendingMasterToggle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingLocationToggle = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [debugInfo, setDebugInfo] = useState<{ scheduledCount: number; notificationGranted: boolean; exactAlarmGranted: boolean } | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+  const [lastTestResult, setLastTestResult] = useState<string | null>(null);
+
+  const refreshDebugInfo = () => {
+    getDebugNotificationInfo().then(info => setDebugInfo(info));
+  };
+
+  useEffect(() => {
+    refreshDebugInfo();
+  }, []);
 
   const showToast = () => {
     if (toastTimeout.current) clearTimeout(toastTimeout.current);
@@ -173,25 +190,53 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
             style={{ flexShrink: 0 }}
             value={adhanSettings.masterEnabled}
             onValueChange={(val) => {
-              // 1. Optimistic update to keep UI responsive
+              // Cancel any in-flight toggle async chain (rapid double-tap guard)
+              if (pendingMasterToggle.current) clearTimeout(pendingMasterToggle.current);
+
+              // Optimistic update to keep UI responsive
               updateAdhanSettings({ masterEnabled: val, setupCompleted: val });
-              
-              // 2. Perform async OS interaction cleanly
-              setTimeout(async () => {
+
+              pendingMasterToggle.current = setTimeout(async () => {
                 if (val) {
                   try {
+                    // 1. Notification permission is critical for scheduling
                     const granted = await requestNotificationPermissions();
                     if (!granted) {
-                      Alert.alert('Permissions Required', 'Please enable notifications in your device settings.');
+                      Alert.alert('Permissions Required', 'Please enable notifications in your device settings to receive Adhan alerts.');
                       updateAdhanSettings({ masterEnabled: false, setupCompleted: false });
                       return;
                     }
                   } catch (e) {
+                    console.warn('[AdhanSettings] Notification permission request error:', e);
                     updateAdhanSettings({ masterEnabled: false, setupCompleted: false });
                     return;
                   }
+
+                  // 2. Perform resync immediately so notifications are scheduled successfully
+                  // before triggering any settings activity that might background the app.
+                  await resync(true);
+
+                  // 3. Request other Android-specific system permissions non-blockingly
+                  if (Platform.OS === 'android') {
+                    try {
+                      await requestExactAlarmPermission();
+                    } catch (err) {
+                      console.warn('[AdhanSettings] Exact alarm permission request error:', err);
+                    }
+
+                    if (!batteryPromptShown) {
+                      try {
+                        await requestBatteryOptimizationWhitelist();
+                        setBatteryPromptShown(true);
+                      } catch (err) {
+                        console.warn('[AdhanSettings] Battery optimization request error:', err);
+                      }
+                    }
+                  }
+                } else {
+                  // If disabling, resync immediately to clear all scheduled notifications
+                  await resync(true);
                 }
-                await resync(true);
               }, 50);
             }}
             trackColor={{ false: '#eae8e3', true: Colors.primary }}
@@ -199,23 +244,35 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           />
         </View>
 
-        {/* Battery Optimization Info */}
+        {/* ── Battery Optimization Card — always visible when Adhan is enabled ── */}
         {adhanSettings.masterEnabled && Platform.OS === 'android' && (
-          <TouchableOpacity 
-            style={[styles.infoCard, { backgroundColor: darkMode ? 'rgba(234, 179, 8, 0.1)' : '#FEF9C3' }]}
-            onPress={() => {
-              try {
-                IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-              } catch (e) {
-                console.log('Failed to launch battery settings', e);
-              }
-            }}
-          >
-            <MaterialIcons name="info-outline" size={20} color={darkMode ? '#FDE047' : '#CA8A04'} style={{ marginTop: 2 }} />
-            <Text style={[styles.infoText, { color: darkMode ? '#FDE047' : '#854D0E' }]}>
-              If Adhan is delayed, tap here to turn off Battery Optimization for Muslim Go Plus.
-            </Text>
-          </TouchableOpacity>
+          <View style={[styles.batteryCard, { backgroundColor: darkMode ? 'rgba(220,38,38,0.12)' : '#FEF2F2' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+              <MaterialIcons name="battery-alert" size={22} color={darkMode ? '#FCA5A5' : '#DC2626'} style={{ marginTop: 1 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.batteryCardTitle, { color: darkMode ? '#FCA5A5' : '#DC2626' }]}>
+                  Battery Optimization Must Be OFF
+                </Text>
+                <Text style={[styles.batteryCardBody, { color: darkMode ? '#FECACA' : '#7F1D1D' }]}>
+                  Android kills background apps to save battery. If Muslim Go Plus is optimized,
+                  Adhan will arrive late or not at all. Tap below to fix this.
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.batteryCardButton, { backgroundColor: darkMode ? '#DC2626' : '#DC2626' }]}
+              onPress={async () => {
+                try {
+                  await requestBatteryOptimizationWhitelist();
+                } catch (e) {
+                  console.log('[AdhanSettings] Battery settings failed:', e);
+                }
+              }}
+            >
+              <MaterialIcons name="settings" size={16} color="#fff" />
+              <Text style={styles.batteryCardButtonText}>Fix Now — Disable Battery Optimization</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* ── Auto-Location ── */}
@@ -229,9 +286,12 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
             <Switch
               value={profile.autoLocation}
               onValueChange={(val) => {
+                // Cancel in-flight toggle chain on rapid double-tap
+                if (pendingLocationToggle.current) clearTimeout(pendingLocationToggle.current);
+
                 setProfile({ autoLocation: val });
-                
-                setTimeout(async () => {
+
+                pendingLocationToggle.current = setTimeout(async () => {
                   if (val) {
                     try {
                       const success = await refreshDeviceCoordinates();
@@ -457,6 +517,114 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           </View>
         </View>
 
+        {/* ── Persistent Prayer Status ── */}
+        <Text style={styles.sectionLabel}>PERSISTENT NOTIFICATION</Text>
+        <View style={[styles.masterCard, { backgroundColor: cardBg, marginBottom: Spacing['3xl'] }]}>
+          <View style={styles.masterIconBg}>
+            <MaterialIcons name="push-pin" size={24} color={Colors.primary} />
+          </View>
+          <View style={styles.masterTextBlock}>
+            <Text style={[styles.masterTitle, { color: titleColor }]}>Prayer Status Notification</Text>
+            <Text style={styles.masterSub}>Show current and next prayer information in the notification bar.</Text>
+          </View>
+          <Switch
+            style={{ flexShrink: 0 }}
+            value={adhanSettings.prayerStatusNotificationEnabled}
+            onValueChange={async (val) => {
+              updateAdhanSettings({ prayerStatusNotificationEnabled: val });
+              await resync(true);
+            }}
+            trackColor={{ false: '#eae8e3', true: Colors.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+
+        {/* ── Adhan Testing ── */}
+        <Text style={styles.sectionLabel}>DEBUG & QA</Text>
+        <View style={[styles.masterCard, { backgroundColor: cardBg, marginBottom: Spacing['3xl'], flexDirection: 'column', alignItems: 'flex-start', gap: 14 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <MaterialIcons name="bug-report" size={20} color={titleColor} />
+            <Text style={[styles.masterTitle, { color: titleColor }]}>Adhan Testing</Text>
+          </View>
+          <Text style={styles.masterSub}>Test Adhan playback and notification behavior without waiting for the next prayer.</Text>
+
+          {/* Action Buttons */}
+          <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+            <TouchableOpacity
+              style={[styles.previewBtn, { flex: 1, backgroundColor: darkMode ? 'rgba(15,109,91,0.12)' : 'rgba(0,83,68,0.05)' }]}
+              onPress={async () => {
+                if (isAdhanPlaying) {
+                  await stopAdhan();
+                } else {
+                  if (selectedAlertType === 'silent_vibrate') {
+                    vibrateAdhan();
+                  } else if (selectedAlertType === 'beep') {
+                    await playShortAdhan(selectedVoice);
+                  } else {
+                    await playFullAdhan(selectedVoice, adhanSettings.prayers.Fajr.fajrPhrase ?? true);
+                  }
+                  setLastTestResult('Playback started successfully.');
+                }
+              }}
+            >
+              <MaterialIcons name="play-arrow" size={18} color={Colors.primary} />
+              <Text style={[styles.previewBtnText, { fontSize: 13 }]}>Play Adhan Now</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.previewBtn, { flex: 1, backgroundColor: darkMode ? 'rgba(15,109,91,0.12)' : 'rgba(0,83,68,0.05)' }]}
+              onPress={async () => {
+                setTestLoading(true);
+                try {
+                  const triggerDate = await scheduleTestAdhan(
+                    'Fajr', // Use Fajr to test fajr phrase if selected
+                    selectedVoice,
+                    selectedAlertType,
+                    adhanSettings.prayers.Fajr.fajrPhrase ?? true
+                  );
+                  setLastTestResult(`Test Adhan scheduled for ${triggerDate.toLocaleTimeString()}.`);
+                  refreshDebugInfo();
+                } catch (e: any) {
+                  setLastTestResult(`Error: ${e.message}`);
+                }
+                setTestLoading(false);
+              }}
+              disabled={testLoading}
+            >
+              {testLoading ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <MaterialIcons name="schedule" size={18} color={Colors.primary} />
+              )}
+              <Text style={[styles.previewBtnText, { fontSize: 13 }]}>Test Scheduled</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Debug Info Panel */}
+          <View style={{ width: '100%', backgroundColor: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)', padding: 12, borderRadius: 8, gap: 4 }}>
+            <Text style={{ fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted }}>Selected Voice: <Text style={{ fontWeight: '700', color: titleColor }}>{selectedVoice}</Text></Text>
+            <Text style={{ fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted }}>Channel ID: <Text style={{ fontWeight: '700', color: titleColor }}>{getChannelForPrayer('Fajr', selectedAlertType, selectedVoice, adhanSettings.prayers.Fajr.fajrPhrase ?? true)}</Text></Text>
+            <Text style={{ fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted }}>Notification Permission: <Text style={{ fontWeight: '700', color: debugInfo?.notificationGranted ? Colors.primary : Colors.secondary }}>{debugInfo?.notificationGranted ? 'Granted' : 'Missing'}</Text></Text>
+            {Platform.OS === 'android' && (
+              <Text style={{ fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted }}>Exact Alarm Permission: <Text style={{ fontWeight: '700', color: debugInfo?.exactAlarmGranted ? Colors.primary : Colors.secondary }}>{debugInfo?.exactAlarmGranted ? 'Granted / Auto' : 'Missing (Check Settings)'}</Text></Text>
+            )}
+            <Text style={{ fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted }}>Scheduled Notifications: <Text style={{ fontWeight: '700', color: titleColor }}>{debugInfo?.scheduledCount ?? 0}</Text></Text>
+            {lastTestResult && (
+              <Text style={{ fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>Result: <Text style={{ fontWeight: '700', color: titleColor }}>{lastTestResult}</Text></Text>
+            )}
+          </View>
+          
+          {/* Warnings */}
+          {!debugInfo?.notificationGranted && (
+             <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Notification permission is missing. Please enable in settings.</Text>
+          )}
+          {Platform.OS === 'android' && debugInfo?.exactAlarmGranted === false && (
+             <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Exact alarm permission is required on your Android version.</Text>
+          )}
+          {!downloadedVoices[selectedVoice] && selectedAlertType === 'adhan' && (
+             <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Selected voice is not downloaded. Will rely on network or fallback.</Text>
+          )}
+        </View>
 
       </ScrollView>
 
@@ -657,5 +825,40 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
     fontSize: Typography.sizes.sm,
     lineHeight: 18,
+  },
+  // Battery optimization card
+  batteryCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    padding: 16,
+    borderRadius: BorderRadius.md,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(220,38,38,0.25)',
+  },
+  batteryCardTitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  batteryCardBody: {
+    fontFamily: 'Manrope',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  batteryCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  batteryCardButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

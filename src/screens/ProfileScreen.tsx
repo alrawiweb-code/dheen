@@ -108,7 +108,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   type ZakatResult = {
     netWealth: number; zakatDue: number; isEligible: boolean;
-    nisabInLocalCurrency: number; silverPricePerGram: number;
+    nisabInLocalCurrency: number; silverPricePerGram: number; goldPricePerGram: number;
     exchangeRate: number; currency: string; dataSource: 'live' | 'fallback';
   };
 
@@ -118,9 +118,12 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [hawlAcknowledged, setHawlAcknowledged] = useState(false);
 
   const fetchNisabInLocalCurrency = async (currencyCode: string): Promise<{
-    nisab: number; silverPricePerGram: number; exchangeRate: number; source: 'live' | 'fallback';
+    nisab: number; silverPricePerGram: number; goldPricePerGram: number; exchangeRate: number; source: 'live' | 'fallback';
   }> => {
+    // Approximate fallback prices — last calibrated June 2024.
+    // Only used when api.metals.live is unreachable.
     const FALLBACK_SILVER_USD_PER_GRAM = 0.96;
+    const FALLBACK_GOLD_USD_PER_GRAM = 72.0; // ~$2240/oz ÷ 31.1035
     const FALLBACK_RATES: Record<string, number> = {
       USD: 1, AED: 3.67, SAR: 3.75, INR: 83.5, PKR: 278,
       BDT: 110, GBP: 0.79, EUR: 0.92, MYR: 4.7, IDR: 15800, TRY: 32.5, EGP: 48.5,
@@ -128,6 +131,7 @@ export const ProfileScreen = ({ navigation }: any) => {
     try {
       let exchangeRate = FALLBACK_RATES[currencyCode] ?? 1;
       let source: 'live' | 'fallback' = 'fallback';
+      // Fetch exchange rate
       try {
         const rateRes = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`,
           { signal: AbortSignal.timeout(5000) });
@@ -136,6 +140,7 @@ export const ProfileScreen = ({ navigation }: any) => {
           if (rateData.rates?.[currencyCode]) { exchangeRate = rateData.rates[currencyCode]; source = 'live'; }
         }
       } catch { }
+      // Fetch silver price
       let silverUsdPerGram = FALLBACK_SILVER_USD_PER_GRAM;
       try {
         const metalRes = await fetch('https://api.metals.live/v1/spot/silver',
@@ -146,9 +151,21 @@ export const ProfileScreen = ({ navigation }: any) => {
           if (pricePerOz && pricePerOz > 0) { silverUsdPerGram = pricePerOz / 31.1035; source = 'live'; }
         }
       } catch { }
+      // Fetch gold price (same API, same format as silver)
+      let goldUsdPerGram = FALLBACK_GOLD_USD_PER_GRAM;
+      try {
+        const goldRes = await fetch('https://api.metals.live/v1/spot/gold',
+          { signal: AbortSignal.timeout(5000) });
+        if (goldRes.ok) {
+          const goldData = await goldRes.json();
+          const goldPricePerOz = goldData[0]?.price ?? goldData?.price;
+          if (goldPricePerOz && goldPricePerOz > 0) { goldUsdPerGram = goldPricePerOz / 31.1035; source = 'live'; }
+        }
+      } catch { }
       return {
         nisab: silverUsdPerGram * SILVER_NISAB_GRAMS * exchangeRate,
         silverPricePerGram: silverUsdPerGram * exchangeRate,
+        goldPricePerGram: goldUsdPerGram * exchangeRate,
         exchangeRate, source,
       };
     } catch {
@@ -156,6 +173,7 @@ export const ProfileScreen = ({ navigation }: any) => {
       return {
         nisab: FALLBACK_SILVER_USD_PER_GRAM * SILVER_NISAB_GRAMS * exchangeRate,
         silverPricePerGram: FALLBACK_SILVER_USD_PER_GRAM * exchangeRate,
+        goldPricePerGram: FALLBACK_GOLD_USD_PER_GRAM * exchangeRate,
         exchangeRate, source: 'fallback',
       };
     }
@@ -169,11 +187,12 @@ export const ProfileScreen = ({ navigation }: any) => {
     }
     setZakatLoading(true);
     try {
-      const { nisab, silverPricePerGram, exchangeRate, source } =
+      const { nisab, silverPricePerGram, goldPricePerGram, exchangeRate, source } =
         await fetchNisabInLocalCurrency(selectedCurrency.code);
       const parse = (val: string) => { const n = parseFloat(val.replace(/,/g, '').trim()); return isNaN(n) || n < 0 ? 0 : n; };
+      // Use real gold price per gram — NOT the old wrong formula (silverPrice × 62)
       const goldTotal = zakat.goldInputMode === 'grams'
-        ? parse(zakat.goldGrams) * silverPricePerGram * 62
+        ? parse(zakat.goldGrams) * goldPricePerGram
         : parse(zakat.goldValue);
       const silverTotal = zakat.silverInputMode === 'grams'
         ? parse(zakat.silverGrams) * silverPricePerGram
@@ -184,7 +203,7 @@ export const ProfileScreen = ({ navigation }: any) => {
       setZakatResult({
         netWealth, zakatDue: isEligible ? netWealth * ZAKAT_RATE : 0,
         isEligible, nisabInLocalCurrency: nisab,
-        silverPricePerGram, exchangeRate,
+        silverPricePerGram, goldPricePerGram, exchangeRate,
         currency: selectedCurrency.code, dataSource: source,
       });
     } catch {

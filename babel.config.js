@@ -4,6 +4,14 @@ module.exports = function (api) {
     presets: ['babel-preset-expo'],
     plugins: [
       'babel-plugin-transform-import-meta',
+      [
+        'module-resolver',
+        {
+          root: ['./src'],
+          alias: { '@': './src' },
+          extensions: ['.ts', '.tsx', '.js', '.jsx'],
+        },
+      ],
     ],
   };
 };

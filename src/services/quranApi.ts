@@ -127,8 +127,10 @@ export async function fetchSurah(
     audio: a.audio,
   }));
 
-  // Strip Bismillah from first ayah (all surahs except Surah 9)
-  if (surahNumber !== 9 && ayahs.length > 0 && ayahs[0].numberInSurah === 1) {
+  // Strip Bismillah from first ayah EXCEPT:
+  //   - Surah 9 (At-Tawbah): has no Bismillah
+  //   - Surah 1 (Al-Fatiha): Bismillah IS ayah 1 — must not be removed
+  if (surahNumber !== 9 && surahNumber !== 1 && ayahs.length > 0 && ayahs[0].numberInSurah === 1) {
     const rawText = ayahs[0].text;
     const cleaned = removeBismillahFromText(rawText);
     console.log(`[QuranAPI] Surah ${surahNumber} ayah 1 BEFORE: "${rawText.substring(0, 50)}"`);

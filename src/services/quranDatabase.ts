@@ -116,8 +116,10 @@ export async function insertFullQuran(
         const a = ayahs[j];
         let arabicText: string = a.text;
 
-        // Strip Bismillah from ayah 1 of every surah except Surah 9
-        if (j === 0 && surahNum !== 9) {
+        // Strip Bismillah from ayah 1 of every surah EXCEPT:
+        //   - Surah 9 (At-Tawbah): has no Bismillah at all
+        //   - Surah 1 (Al-Fatiha): Bismillah IS the first ayah — must not be removed
+        if (j === 0 && surahNum !== 9 && surahNum !== 1) {
           arabicText = removeBismillahFromText(arabicText);
         }
 

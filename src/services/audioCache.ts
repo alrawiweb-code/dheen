@@ -142,8 +142,9 @@ export const downloadAndCache = async (
     if (result && result.uri) {
       // Verify downloaded file meets minimum size
       const downloadedInfo = await FileSystem.getInfoAsync(tmpPath);
-      if (!downloadedInfo.exists || (downloadedInfo.size ?? 0) < MIN_VALID_FILE_SIZE) {
-        console.warn(`[AudioCache] Downloaded file too small for ${voiceKey}: ${downloadedInfo.size ?? 0} bytes — deleting.`);
+      const downloadedSize = downloadedInfo.exists ? (downloadedInfo.size ?? 0) : 0;
+      if (!downloadedInfo.exists || downloadedSize < MIN_VALID_FILE_SIZE) {
+        console.warn(`[AudioCache] Downloaded file too small for ${voiceKey}: ${downloadedSize} bytes — deleting.`);
         await FileSystem.deleteAsync(tmpPath, { idempotent: true });
         return null;
       }

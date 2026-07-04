@@ -112,7 +112,7 @@ const TargetSheet: React.FC<TargetSheetProps> = ({ visible, current, onSelect, o
     }
   }, [visible]);
 
-  if (!visible && translateY === 400) return null;
+  if (!visible) return null;
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
