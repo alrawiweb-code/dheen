@@ -49,10 +49,25 @@ export const refreshDeviceCoordinates = async (): Promise<boolean> => {
 
     const { latitude, longitude } = location.coords;
     
+    let city = useAppStore.getState().profile.city;
+    let country = useAppStore.getState().profile.country;
+    
+    try {
+      const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (geocode && geocode.length > 0) {
+        city = geocode[0].city || geocode[0].region || geocode[0].subregion || city;
+        country = geocode[0].country || country;
+      }
+    } catch (err) {
+      console.warn('[LocationManager] Reverse geocode failed', err);
+    }
+
     // Save to global user profile
     useAppStore.getState().setProfile({
       latitude,
       longitude,
+      city,
+      country,
     });
 
     return true;

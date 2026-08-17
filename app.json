@@ -3,7 +3,6 @@
     "name": "Muslim Go Plus",
     "slug": "dheen-app",
     "version": "1.0.9",
-
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -37,8 +36,7 @@
         "backgroundColor": "#0A3D2B"
       },
       "package": "com.alrawi.muslimpro",
-      "versionCode": 11,
-
+      "versionCode": 15,
       "softwareKeyboardLayoutMode": "resize",
       "blockedPermissions": [
         "android.permission.ACTIVITY_RECOGNITION"

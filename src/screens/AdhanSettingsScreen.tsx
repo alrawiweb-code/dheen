@@ -31,11 +31,11 @@ import { ScreenWrapper, useScreenBottomInset } from '../components/ScreenWrapper
 import * as IntentLauncher from 'expo-intent-launcher';
 
 const PRAYERS = [
-  { id: 'Fajr',    icon: 'brightness-3',  label: 'Dawn Prayer',      color: Colors.secondary, special: true  },
-  { id: 'Dhuhr',   icon: 'wb-sunny',       label: 'Noon Prayer',      color: Colors.primary,   special: false },
-  { id: 'Asr',     icon: 'wb-twilight',    label: 'Afternoon Prayer', color: Colors.primary,   special: false },
-  { id: 'Maghrib', icon: 'bedtime',         label: 'Sunset Prayer',    color: Colors.primary,   special: false },
-  { id: 'Isha',    icon: 'nights-stay',    label: 'Night Prayer',     color: Colors.primary,   special: false },
+  { id: 'Fajr', icon: 'brightness-3', label: 'Dawn Prayer', color: Colors.secondary, special: true },
+  { id: 'Dhuhr', icon: 'wb-sunny', label: 'Noon Prayer', color: Colors.primary, special: false },
+  { id: 'Asr', icon: 'wb-twilight', label: 'Afternoon Prayer', color: Colors.primary, special: false },
+  { id: 'Maghrib', icon: 'bedtime', label: 'Sunset Prayer', color: Colors.primary, special: false },
+  { id: 'Isha', icon: 'nights-stay', label: 'Night Prayer', color: Colors.primary, special: false },
 ] as const;
 
 export const AdhanSettingsScreen = ({ navigation }: any) => {
@@ -69,6 +69,10 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     refreshDebugInfo();
+    // Stop adhan when leaving the settings screen
+    return () => {
+      stopAdhan();
+    };
   }, []);
 
   const showToast = () => {
@@ -101,12 +105,15 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
   const selectedAlertType = adhanSettings.prayers.Fajr.alertType;
 
   const updateAllPrayers = (patch: Partial<typeof adhanSettings.prayers.Fajr>) => {
-    (['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const).forEach((p) =>
-      updatePrayerAdhanSettings(p, patch)
-    );
+    const currentPrayers = useAppStore.getState().adhanSettings.prayers;
+    const updatedPrayers = { ...currentPrayers };
+    (['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const).forEach((p) => {
+      updatedPrayers[p] = { ...updatedPrayers[p], ...patch };
+    });
+    updateAdhanSettings({ prayers: updatedPrayers });
   };
 
-  const resync = (force = false) => syncPrayerNotifications(force).catch(() => {});
+  const resync = (force = false) => syncPrayerNotifications(force).catch(() => { });
 
   const bottomInset = useScreenBottomInset(false);
 
@@ -335,6 +342,127 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           )}
         </View>
 
+        {/* ── Prayer Calculation ── */}
+        <Text style={styles.sectionLabel}>PRAYER CALCULATION</Text>
+        <View style={[styles.masterCard, { backgroundColor: cardBg, flexDirection: 'column', alignItems: 'stretch', gap: 16 }]}>
+
+          {/* Calculation Method */}
+          <View>
+            <Text style={[styles.masterTitle, { color: titleColor, marginBottom: 8 }]}>Calculation Method</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {[
+                { id: 'auto', label: 'Auto (Country)' },
+                { id: 3, label: 'MWL' },
+                { id: 2, label: 'ISNA' },
+                { id: 1, label: 'Karachi' },
+                { id: 4, label: 'Makkah' },
+                { id: 5, label: 'Egypt' },
+              ].map((method) => {
+                const isSelected = adhanSettings.calculationMethod === method.id;
+                return (
+                  <TouchableOpacity
+                    key={method.id}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      backgroundColor: isSelected ? Colors.primary : (darkMode ? 'rgba(255,255,255,0.08)' : '#eae8e3'),
+                    }}
+                    onPress={async () => {
+                      updateAdhanSettings({ calculationMethod: method.id });
+                      await resync(true);
+                    }}
+                  >
+                    <Text style={{
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: isSelected ? '#fff' : (darkMode ? 'rgba(255,255,255,0.6)' : Colors.textMuted),
+                    }}>
+                      {method.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : '#eae8e3' }} />
+
+          {/* Asr Juristic Method */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={[styles.masterTitle, { color: titleColor }]}>Asr Juristic Method</Text>
+              <Text style={styles.masterSub}>Hanafi method calculates Asr later</Text>
+            </View>
+            <View style={{ flexDirection: 'row', backgroundColor: darkMode ? 'rgba(255,255,255,0.08)' : '#eae8e3', borderRadius: 20, padding: 4 }}>
+              {[
+                { id: 0, label: 'Standard' },
+                { id: 1, label: 'Hanafi' },
+              ].map((m) => {
+                const isSelected = adhanSettings.asrMethod === m.id;
+                return (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                      backgroundColor: isSelected ? Colors.primary : 'transparent',
+                    }}
+                    onPress={async () => {
+                      updateAdhanSettings({ asrMethod: m.id as 0 | 1 });
+                      await resync(true);
+                    }}
+                  >
+                    <Text style={{
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 12,
+                      fontWeight: '700',
+                      color: isSelected ? '#fff' : (darkMode ? 'rgba(255,255,255,0.6)' : Colors.textMuted),
+                    }}>
+                      {m.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : '#eae8e3' }} />
+
+          {/* Manual Tune Offset */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={[styles.masterTitle, { color: titleColor }]}>Manual Adjustment</Text>
+              <Text style={styles.masterSub}>Shift all prayers (in minutes)</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: darkMode ? 'rgba(255,255,255,0.08)' : '#eae8e3', borderRadius: 20 }}>
+              <TouchableOpacity
+                style={{ padding: 10 }}
+                onPress={async () => {
+                  updateAdhanSettings({ tuneOffset: (adhanSettings.tuneOffset ?? 0) - 1 });
+                  await resync(true);
+                }}
+              >
+                <MaterialIcons name="remove" size={20} color={darkMode ? '#fff' : Colors.textDark} />
+              </TouchableOpacity>
+              <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: '700', color: titleColor, minWidth: 24, textAlign: 'center' }}>
+                {adhanSettings.tuneOffset > 0 ? `+${adhanSettings.tuneOffset}` : adhanSettings.tuneOffset ?? 0}
+              </Text>
+              <TouchableOpacity
+                style={{ padding: 10 }}
+                onPress={async () => {
+                  updateAdhanSettings({ tuneOffset: (adhanSettings.tuneOffset ?? 0) + 1 });
+                  await resync(true);
+                }}
+              >
+                <MaterialIcons name="add" size={20} color={darkMode ? '#fff' : Colors.textDark} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         {/* ── Per-Prayer Toggles ── */}
         <Text style={styles.sectionLabel}>DAILY PRAYER CYCLE</Text>
         <View style={styles.prayerList}>
@@ -383,9 +511,9 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
         <Text style={styles.sectionLabel}>RECITATION VOICE</Text>
         <View style={styles.voiceGrid}>
           {[
-            { id: 'makkah',  label: 'Adhan 1',  sub: 'Standard',     c1: '#0F6D5B', c2: '#005344' },
+            { id: 'makkah', label: 'Adhan 1', sub: 'Standard', c1: '#0F6D5B', c2: '#005344' },
             { id: 'madinah', label: 'Adhan 2', sub: "Melodic", c1: '#B58C00', c2: '#745C00' },
-            { id: 'alaqsa',  label: 'Adhan 3', sub: 'Classic',        c1: '#003B31', c2: '#002019' },
+            { id: 'alaqsa', label: 'Adhan 3', sub: 'Classic', c1: '#003B31', c2: '#002019' },
           ].map((voice) => {
             const isSelected = selectedVoice === voice.id;
             return (
@@ -419,17 +547,20 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
         <Text style={styles.sectionLabel}>ALERT MODE</Text>
         <View style={styles.alertList}>
           {([
-            { id: 'adhan',          icon: 'volume-up',              label: 'Full Adhan',         desc: 'Complete Adhan audio' },
-            { id: 'beep',           icon: 'notifications-active',   label: 'Short Notification', desc: '8-second clip' },
-            { id: 'silent_vibrate', icon: 'vibration',              label: 'Vibrate Only',       desc: 'No audio, device vibrates' },
+            { id: 'adhan', icon: 'volume-up', label: 'Full Adhan', desc: 'Complete Adhan audio' },
+            { id: 'beep', icon: 'notifications-active', label: 'Short Notification', desc: '8-second clip' },
+            { id: 'silent_vibrate', icon: 'vibration', label: 'Vibrate Only', desc: 'No audio, device vibrates' },
           ] as { id: 'adhan' | 'beep' | 'silent_vibrate'; icon: any; label: string; desc: string }[]).map((mode) => {
             const isSelected = selectedAlertType === mode.id;
             return (
               <TouchableOpacity
                 key={mode.id}
                 style={[styles.alertRow, !isSelected && { backgroundColor: cardBgAlt }, isSelected && styles.alertRowSelected]}
-                onPress={() => {
+                onPress={async () => {
                   updateAllPrayers({ alertType: mode.id });
+                  await resync(true);
+                  showToast();
+                  refreshDebugInfo();
                 }}
               >
                 <View style={[styles.radio, isSelected && styles.radioSelected]}>
@@ -475,7 +606,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
             <MaterialIcons name="play-arrow" size={20} color={Colors.primary} />
           )}
           <Text style={styles.previewBtnText}>
-            {previewLoading ? 'Loading...' : isAdhanPlaying ? 'Stop Preview' : 'Preview Adhan'}
+            {previewLoading ? 'Loading...' : isAdhanPlaying ? 'Pause Preview' : 'Play Preview'}
           </Text>
         </TouchableOpacity>
 
@@ -493,14 +624,16 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                 <TouchableOpacity
                   key={mins}
                   style={{
-                    paddingHorizontal: 20,
+                    paddingHorizontal: 16,
                     paddingVertical: 10,
                     borderRadius: 20,
                     backgroundColor: isSelected ? Colors.primary : (darkMode ? 'rgba(255,255,255,0.08)' : '#eae8e3'),
                   }}
                   onPress={async () => {
                     updateAllPrayers({ preAlert: mins });
-                    await resync();
+                    await resync(true);
+                    showToast();
+                    refreshDebugInfo();
                   }}
                 >
                   <Text style={{
@@ -509,7 +642,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
                     fontWeight: '700',
                     color: isSelected ? '#fff' : (darkMode ? 'rgba(255,255,255,0.6)' : Colors.textMuted),
                   }}>
-                    {mins === 0 ? 'Off' : `${mins}m`}
+                    {mins === 0 ? 'Off' : `${mins} min`}
                   </Text>
                 </TouchableOpacity>
               );
@@ -613,16 +746,16 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
               <Text style={{ fontFamily: 'Manrope', fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>Result: <Text style={{ fontWeight: '700', color: titleColor }}>{lastTestResult}</Text></Text>
             )}
           </View>
-          
+
           {/* Warnings */}
           {!debugInfo?.notificationGranted && (
-             <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Notification permission is missing. Please enable in settings.</Text>
+            <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Notification permission is missing. Please enable in settings.</Text>
           )}
           {Platform.OS === 'android' && debugInfo?.exactAlarmGranted === false && (
-             <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Exact alarm permission is required on your Android version.</Text>
+            <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Exact alarm permission is required on your Android version.</Text>
           )}
           {!downloadedVoices[selectedVoice] && selectedAlertType === 'adhan' && (
-             <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Selected voice is not downloaded. Will rely on network or fallback.</Text>
+            <Text style={{ fontFamily: 'Manrope', fontSize: 12, color: Colors.secondary }}>⚠️ Selected voice is not downloaded. Will rely on network or fallback.</Text>
           )}
         </View>
 
@@ -634,7 +767,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
           style={styles.saveBtn}
           activeOpacity={0.85}
           onPress={async () => {
-            updateAdhanSettings({ 
+            updateAdhanSettings({
               setupCompleted: adhanSettings.masterEnabled,
             });
             await resync(true);
@@ -647,7 +780,7 @@ export const AdhanSettingsScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
     </ScreenWrapper>
-);
+  );
 };
 
 const styles = StyleSheet.create({

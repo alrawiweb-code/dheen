@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
 import { useIsFocused } from '@react-navigation/native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import { refreshDeviceCoordinates } from '../services/locationManager';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
@@ -64,6 +65,12 @@ export const QiblaScreen = ({ navigation }: any) => {
         if (status !== 'granted') {
           setPermissionError(true);
           return;
+        }
+        
+        // Fetch location and reverse geocode to update UI
+        if (useAppStore.getState().profile.autoLocation) {
+          // We don't await this so it doesn't block compass startup
+          refreshDeviceCoordinates().catch(() => {});
         }
 
         // watchHeadingAsync provides trueHeading with magnetic declination applied
@@ -117,7 +124,7 @@ export const QiblaScreen = ({ navigation }: any) => {
 
   const compassRotationAnim = animatedHeading.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '-1deg']
+    outputRange: ['0deg', '1deg']
   });
 
   const qiblaDirection = Math.round((qiblaBearing - deviceHeading + 360) % 360);

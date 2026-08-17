@@ -28,6 +28,9 @@ export interface AdhanSettings {
   jumuahEnabled: boolean;
   jumuahTime: string; // '12:00'
   prayerStatusNotificationEnabled: boolean;
+  calculationMethod: number | 'auto';
+  asrMethod: 0 | 1; // 0 = Shafi/Standard, 1 = Hanafi
+  tuneOffset: number;
 }
 
 export interface SukoonEntry {
@@ -156,6 +159,9 @@ const defaultAdhanSettings: AdhanSettings = {
   jumuahEnabled: true,
   jumuahTime: '12:00',
   prayerStatusNotificationEnabled: false,
+  calculationMethod: 'auto',
+  asrMethod: 0,
+  tuneOffset: 0,
 };
 
 export const useAppStore = create<AppState>()(
@@ -403,7 +409,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'dheen-app-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 10,
+      version: 11,
       partialize: (state) => {
         const { isAdhanPlaying, ...rest } = state;
         return rest;
@@ -439,6 +445,13 @@ export const useAppStore = create<AppState>()(
         if (_version < 10) {
           if (state.adhanSettings) {
             state.adhanSettings.prayerStatusNotificationEnabled = false;
+          }
+        }
+        if (_version < 11) {
+          if (state.adhanSettings) {
+            state.adhanSettings.calculationMethod = 'auto';
+            state.adhanSettings.asrMethod = 0;
+            state.adhanSettings.tuneOffset = 0;
           }
         }
         return state;

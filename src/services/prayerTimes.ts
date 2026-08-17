@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppStore } from '../store/useAppStore';
 
 const ALADHAN_BASE = 'https://api.aladhan.com/v1';
 const PRAYER_CACHE_KEY = 'deen_prayer_cache';
@@ -78,15 +79,20 @@ export async function getCalendarForMonth(
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
 
-  const resolvedMethod = options.method !== undefined 
-    ? options.method 
-    : getCalculationMethodForCountry(options.country);
+  const adhanSettings = useAppStore.getState().adhanSettings;
+  const customMethod = adhanSettings?.calculationMethod;
+  const asrMethod = adhanSettings?.asrMethod ?? 0;
+  const tuneOffset = adhanSettings?.tuneOffset ?? 0;
+
+  const resolvedMethod = 
+    options.method !== undefined ? options.method : 
+    (customMethod !== 'auto' && customMethod !== undefined ? customMethod : getCalculationMethodForCountry(options.country));
 
   const cacheKey = `${PRAYER_CACHE_KEY}_${month}_${year}_${
     options.city && options.country
       ? `${options.city.toLowerCase()}_${options.country.toLowerCase()}`
       : `${options.latitude?.toFixed(3)}_${options.longitude?.toFixed(3)}`
-  }_m${resolvedMethod}`;
+  }_m${resolvedMethod}_s${asrMethod}_t${tuneOffset}`;
 
   const cached = await AsyncStorage.getItem(cacheKey);
   if (cached) {
@@ -97,11 +103,16 @@ export async function getCalendarForMonth(
 
   let url = '';
   if (options.city && options.country) {
-    url = `${ALADHAN_BASE}/calendarByCity/${year}/${month}?city=${encodeURIComponent(options.city)}&country=${encodeURIComponent(options.country)}&method=${resolvedMethod}`;
+    url = `${ALADHAN_BASE}/calendarByCity/${year}/${month}?city=${encodeURIComponent(options.city)}&country=${encodeURIComponent(options.country)}&method=${resolvedMethod}&school=${asrMethod}`;
   } else if (options.latitude !== undefined && options.longitude !== undefined) {
-    url = `${ALADHAN_BASE}/calendar/${year}/${month}?latitude=${options.latitude}&longitude=${options.longitude}&method=${resolvedMethod}`;
+    url = `${ALADHAN_BASE}/calendar/${year}/${month}?latitude=${options.latitude}&longitude=${options.longitude}&method=${resolvedMethod}&school=${asrMethod}`;
   } else {
     throw new Error('No location provided');
+  }
+
+  if (tuneOffset !== 0) {
+    // tune = Imsak,Fajr,Sunrise,Dhuhr,Asr,Sunset,Maghrib,Isha,Midnight
+    url += `&tune=${tuneOffset},${tuneOffset},${tuneOffset},${tuneOffset},${tuneOffset},${tuneOffset},${tuneOffset},${tuneOffset},${tuneOffset}`;
   }
 
   console.log(`[PrayerTimes] Fetching method ${resolvedMethod} for country ${options.country || 'N/A'}: ${url}`);

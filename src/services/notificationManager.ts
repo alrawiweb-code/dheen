@@ -8,20 +8,19 @@ import { handleAdhanTrigger } from './adhanManager';
 import { Prayer } from '../theme';
 import { navigationRef } from '../navigation/navigationRef';
 import { updatePrayerStatusNotification } from './prayerStatusManager';
-import { updatePrayerStatusNotification } from './prayerStatusManager';
 import * as TaskManager from 'expo-task-manager';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async () => {
   console.log('[NotificationManager] Background task triggered (Boot completed).');
-  
+
   let attempts = 0;
   while (!useAppStore.persist?.hasHydrated?.() && attempts < 10) {
     await new Promise(r => setTimeout(r, 200));
     attempts++;
   }
-  
+
   await syncPrayerNotifications(true);
 });
 
@@ -38,9 +37,9 @@ const NOTIFICATION_SETTINGS_HASH_KEY = '@dheen_notifications_settings_hash';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const VOICE_SOUND_MAP: Record<string, string> = {
-  makkah:  'azan_makkah.mp3',
+  makkah: 'azan_makkah.mp3',
   madinah: 'azan_madinah.mp3',
-  alaqsa:  'azan_alaqsa.mp3',
+  alaqsa: 'azan_alaqsa.mp3',
 };
 const FAJR_PHRASE_SOUND = 'fajr_bank.mp3';
 
@@ -49,13 +48,13 @@ const FAJR_PHRASE_SOUND = 'fajr_bank.mp3';
 // (which referenced missing sound files before app.json was corrected) cannot be
 // repaired. A new channel ID is the only way to get a fresh channel on existing installs.
 const CHANNEL_IDS: Record<string, string> = {
-  makkah:      'adhan_makkah_v6',
-  madinah:     'adhan_madinah_v6',
-  alaqsa:      'adhan_alaqsa_v6',
+  makkah: 'adhan_makkah_v6',
+  madinah: 'adhan_madinah_v6',
+  alaqsa: 'adhan_alaqsa_v6',
   fajr_phrase: 'adhan_fajr_phrase_v6',
-  beep:        'adhan_beep_v6',
-  silent:      'adhan_silent_v6',
-  pre_alert:   'adhan_pre_alert_v6',
+  beep: 'adhan_beep_v6',
+  silent: 'adhan_silent_v6',
+  pre_alert: 'adhan_pre_alert_v6',
 };
 
 // ── Android Notification Channels ───────────────────────────────────────────
@@ -111,17 +110,17 @@ export async function ensureAndroidChannels(): Promise<void> {
       description: 'Vibration-only alert at prayer time',
       importance: Notifications.AndroidImportance.MAX,
       sound: null,
-      vibrationPattern: [0, 500, 200, 500, 200, 500],
+      vibrationPattern: [0, 600, 300, 600, 300, 600, 300, 600],
       enableVibrate: true,
       bypassDnd: true, // Prayer alerts should bypass Do Not Disturb
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
 
-    // Pre-alert channel — standard notification
+    // Pre-alert channel — standard notification with sound & banner
     await Notifications.setNotificationChannelAsync(CHANNEL_IDS.pre_alert, {
       name: 'Prayer Reminders',
       description: 'Advance reminders before prayer time',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       enableVibrate: true,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
@@ -342,224 +341,224 @@ export const syncPrayerNotifications = async (forceResync = false) => {
       console.log(`[NotificationManager] Already scheduled for ${currentMonthKey} with current settings, skipping.`);
       return;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   isSyncing = true;
-  
-  try {
-
-  // Ensure all Android channels exist before scheduling
-  await ensureAndroidChannels();
-
-  // profile already read above the re-sync guard
-
-  // Clear existing to avoid duplicate overlaps
-  await Notifications.cancelAllScheduledNotificationsAsync();
-
-  // If Master disabled, stop here.
-  if (!settings.masterEnabled) {
-    console.log('[NotificationManager] Master disabled. Cleared schedules.');
-    try {
-      await AsyncStorage.removeItem(NOTIFICATION_CACHE_KEY);
-      await AsyncStorage.removeItem(NOTIFICATION_SETTINGS_HASH_KEY);
-    } catch (_) {}
-    return;
-  }
-
-  const options = {
-    latitude: profile.latitude ?? undefined,
-    longitude: profile.longitude ?? undefined,
-    city: profile.city || undefined,
-    country: profile.country || undefined,
-  };
-
-  const now = new Date();
-  let daysData: DailyPrayerData[] = [];
 
   try {
-    const currentMonthData = await getCalendarForMonth(now, options);
-    daysData = [...currentMonthData];
 
-    const nextMonthDate = new Date(now);
-    nextMonthDate.setMonth(now.getMonth() + 1);
-    nextMonthDate.setDate(1);
+    // Ensure all Android channels exist before scheduling
+    await ensureAndroidChannels();
+
+    // profile already read above the re-sync guard
+
+    // Clear existing to avoid duplicate overlaps
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    // If Master disabled, stop here.
+    if (!settings.masterEnabled) {
+      console.log('[NotificationManager] Master disabled. Cleared schedules.');
+      try {
+        await AsyncStorage.removeItem(NOTIFICATION_CACHE_KEY);
+        await AsyncStorage.removeItem(NOTIFICATION_SETTINGS_HASH_KEY);
+      } catch (_) { }
+      return;
+    }
+
+    const options = {
+      latitude: profile.latitude ?? undefined,
+      longitude: profile.longitude ?? undefined,
+      city: profile.city || undefined,
+      country: profile.country || undefined,
+    };
+
+    const now = new Date();
+    let daysData: DailyPrayerData[] = [];
+
     try {
-      const nextMonthData = await getCalendarForMonth(nextMonthDate, options);
-      daysData = [...daysData, ...nextMonthData];
-      console.log(`[NotificationManager] Fetched ${daysData.length} days of prayer data.`);
+      const currentMonthData = await getCalendarForMonth(now, options);
+      daysData = [...currentMonthData];
+
+      const nextMonthDate = new Date(now);
+      nextMonthDate.setMonth(now.getMonth() + 1);
+      nextMonthDate.setDate(1);
+      try {
+        const nextMonthData = await getCalendarForMonth(nextMonthDate, options);
+        daysData = [...daysData, ...nextMonthData];
+        console.log(`[NotificationManager] Fetched ${daysData.length} days of prayer data.`);
+      } catch (e) {
+        console.warn('[NotificationManager] Could not prefetch next month, continuing with current month only.', e);
+      }
     } catch (e) {
-      console.warn('[NotificationManager] Could not prefetch next month, continuing with current month only.', e);
-    }
-  } catch (e) {
-    console.error('[NotificationManager] Failed to get calendar for notifications', e);
-    return;
-  }
-
-  const prayers: Prayer[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-  let scheduledCount = 0;
-  // Android supports hundreds of exact alarms. 200 covers 30 days × 5 prayers × 2 (with pre-alerts).
-  const MAX_NOTIFICATIONS = 200;
-
-  for (let offset = 0; offset < 30; offset++) {
-    if (scheduledCount >= MAX_NOTIFICATIONS) break;
-
-    const targetDate = new Date(now);
-    targetDate.setDate(now.getDate() + offset);
-
-    const dayStr = `${String(targetDate.getDate()).padStart(2, '0')}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${targetDate.getFullYear()}`;
-    let dayData = daysData.find(d => d.dateStr === dayStr);
-
-    // Offline month transition fallback
-    if (!dayData && daysData.length > 0) {
-      dayData = daysData[daysData.length - 1];
+      console.error('[NotificationManager] Failed to get calendar for notifications', e);
+      return;
     }
 
-    if (!dayData) continue;
+    const prayers: Prayer[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    let scheduledCount = 0;
+    // Android supports hundreds of exact alarms. 200 covers 30 days × 5 prayers × 2 (with pre-alerts).
+    const MAX_NOTIFICATIONS = 200;
 
-    for (const prayer of prayers) {
+    for (let offset = 0; offset < 30; offset++) {
       if (scheduledCount >= MAX_NOTIFICATIONS) break;
 
-      const prayerConfig = settings.prayers[prayer];
-      if (!prayerConfig.enabled) continue;
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() + offset);
 
-      const timeStr = dayData.times[prayer as keyof typeof dayData.times] as string;
-      if (!timeStr) continue;
+      const dayStr = `${String(targetDate.getDate()).padStart(2, '0')}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${targetDate.getFullYear()}`;
+      let dayData = daysData.find(d => d.dateStr === dayStr);
 
-      const [hour, minute] = timeStr.split(':').map(Number);
-      const triggerDate = new Date(targetDate);
-      triggerDate.setHours(hour, minute, 0, 0);
+      // Offline month transition fallback
+      if (!dayData && daysData.length > 0) {
+        dayData = daysData[daysData.length - 1];
+      }
 
-      if (triggerDate <= now) continue;
+      if (!dayData) continue;
 
-      // Quiet hours check
-      if (settings.quietHoursEnabled) {
-        const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
-        const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
-        const triggerMins = hour * 60 + minute;
-        const fromMins = quietFromH * 60 + quietFromM;
-        const toMins = quietToH * 60 + quietToM;
+      for (const prayer of prayers) {
+        if (scheduledCount >= MAX_NOTIFICATIONS) break;
 
-        const isInQuietHours = fromMins > toMins
-          ? (triggerMins >= fromMins || triggerMins < toMins)
-          : (triggerMins >= fromMins && triggerMins < toMins);
+        const prayerConfig = settings.prayers[prayer];
+        if (!prayerConfig.enabled) continue;
 
-        if (isInQuietHours) {
-          if (!(prayer === 'Fajr' && settings.allowFajrDuringQuiet)) {
-            continue;
+        const timeStr = dayData.times[prayer as keyof typeof dayData.times] as string;
+        if (!timeStr) continue;
+
+        const [hour, minute] = timeStr.split(':').map(Number);
+        const triggerDate = new Date(targetDate);
+        triggerDate.setHours(hour, minute, 0, 0);
+
+        if (triggerDate <= now) continue;
+
+        // Quiet hours check
+        if (settings.quietHoursEnabled) {
+          const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
+          const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
+          const triggerMins = hour * 60 + minute;
+          const fromMins = quietFromH * 60 + quietFromM;
+          const toMins = quietToH * 60 + quietToM;
+
+          const isInQuietHours = fromMins > toMins
+            ? (triggerMins >= fromMins || triggerMins < toMins)
+            : (triggerMins >= fromMins && triggerMins < toMins);
+
+          if (isInQuietHours) {
+            if (!(prayer === 'Fajr' && settings.allowFajrDuringQuiet)) {
+              continue;
+            }
           }
         }
-      }
 
-      // Determine the correct channel and sound for this prayer
-      const fajrPhrase = prayer === 'Fajr' && (prayerConfig.fajrPhrase ?? true);
-      const channelId = getChannelForPrayer(prayer, prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
-      const soundFile = getSoundForPrayer(prayer, prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
+        // Determine the correct channel and sound for this prayer
+        const fajrPhrase = prayer === 'Fajr' && (prayerConfig.fajrPhrase ?? true);
+        const channelId = getChannelForPrayer(prayer, prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
+        const soundFile = getSoundForPrayer(prayer, prayerConfig.alertType, prayerConfig.voice, fajrPhrase);
 
-      try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `${prayer} Prayer Time`,
-            body: `It's time for ${prayer} prayer`,
-            // The sound field tells the OS WHAT to play.
-            // On Android, this references a file in res/raw/ (bundled via app.json plugin).
-            sound: soundFile ?? undefined,
-            data: {
-              intent: 'play_adhan',
-              prayer,
-              voiceKey: prayerConfig.voice,
-              alertType: prayerConfig.alertType,
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `${prayer} Prayer Time`,
+              body: `It's time for ${prayer} prayer`,
+              // The sound field tells the OS WHAT to play.
+              // On Android, this references a file in res/raw/ (bundled via app.json plugin).
+              sound: soundFile ?? undefined,
+              data: {
+                intent: 'play_adhan',
+                prayer,
+                voiceKey: prayerConfig.voice,
+                alertType: prayerConfig.alertType,
+              },
             },
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: triggerDate,
-            channelId,
-          },
-        });
-        scheduledCount++;
-      } catch (scheduleError) {
-        console.warn(`[NotificationManager] Failed to schedule ${prayer} on ${dayStr}:`, scheduleError);
-      }
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: triggerDate,
+              channelId,
+            },
+          });
+          scheduledCount++;
+        } catch (scheduleError) {
+          console.warn(`[NotificationManager] Failed to schedule ${prayer} on ${dayStr}:`, scheduleError);
+        }
 
-      // Pre-alert (with quiet hours check)
-      if (prayerConfig.preAlert > 0 && scheduledCount < MAX_NOTIFICATIONS) {
-        const preAlertDate = new Date(triggerDate.getTime() - prayerConfig.preAlert * 60 * 1000);
-        if (preAlertDate > now) {
-          // Apply quiet hours check to pre-alert too
-          let preAlertInQuiet = false;
-          if (settings.quietHoursEnabled) {
-            const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
-            const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
-            const preH = preAlertDate.getHours();
-            const preM = preAlertDate.getMinutes();
-            const preMins = preH * 60 + preM;
-            const fromMins = quietFromH * 60 + quietFromM;
-            const toMins = quietToH * 60 + quietToM;
-            preAlertInQuiet = fromMins > toMins
-              ? (preMins >= fromMins || preMins < toMins)
-              : (preMins >= fromMins && preMins < toMins);
-            if (prayer === 'Fajr' && settings.allowFajrDuringQuiet) preAlertInQuiet = false;
-          }
+        // Pre-alert (with quiet hours check)
+        if (prayerConfig.preAlert > 0 && scheduledCount < MAX_NOTIFICATIONS) {
+          const preAlertDate = new Date(triggerDate.getTime() - prayerConfig.preAlert * 60 * 1000);
+          if (preAlertDate > now) {
+            // Apply quiet hours check to pre-alert too
+            let preAlertInQuiet = false;
+            if (settings.quietHoursEnabled) {
+              const [quietFromH, quietFromM] = settings.quietFrom.split(':').map(Number);
+              const [quietToH, quietToM] = settings.quietTo.split(':').map(Number);
+              const preH = preAlertDate.getHours();
+              const preM = preAlertDate.getMinutes();
+              const preMins = preH * 60 + preM;
+              const fromMins = quietFromH * 60 + quietFromM;
+              const toMins = quietToH * 60 + quietToM;
+              preAlertInQuiet = fromMins > toMins
+                ? (preMins >= fromMins || preMins < toMins)
+                : (preMins >= fromMins && preMins < toMins);
+              if (prayer === 'Fajr' && settings.allowFajrDuringQuiet) preAlertInQuiet = false;
+            }
 
-          if (!preAlertInQuiet) {
-            try {
-              await Notifications.scheduleNotificationAsync({
-                content: {
-                  title: `${prayer} in ${prayerConfig.preAlert} minutes`,
-                  body: `Prepare for ${prayer} prayer`,
-                  sound: 'default',
-                  data: { intent: 'pre_alert', prayer },
-                },
-                trigger: {
-                  type: Notifications.SchedulableTriggerInputTypes.DATE,
-                  date: preAlertDate,
-                  channelId: CHANNEL_IDS.pre_alert,
-                },
-              });
-              scheduledCount++;
-            } catch (preAlertError) {
-              console.warn(`[NotificationManager] Failed to schedule pre-alert for ${prayer}:`, preAlertError);
+            if (!preAlertInQuiet) {
+              try {
+                await Notifications.scheduleNotificationAsync({
+                  content: {
+                    title: `${prayer} in ${prayerConfig.preAlert} minutes`,
+                    body: `Prepare for ${prayer} prayer`,
+                    sound: 'default',
+                    data: { intent: 'pre_alert', prayer },
+                  },
+                  trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.DATE,
+                    date: preAlertDate,
+                    channelId: CHANNEL_IDS.pre_alert,
+                  },
+                });
+                scheduledCount++;
+              } catch (preAlertError) {
+                console.warn(`[NotificationManager] Failed to schedule pre-alert for ${prayer}:`, preAlertError);
+              }
             }
           }
         }
       }
     }
-  }
 
-  // Mark synced
-  try {
-    const syncNow = new Date();
-    const currentMonthKey = `${syncNow.getFullYear()}-${String(syncNow.getMonth() + 1).padStart(2, '0')}`;
-    await AsyncStorage.setItem(NOTIFICATION_CACHE_KEY, currentMonthKey);
-    // Save hash with location so future location changes invalidate the cache
-    await AsyncStorage.setItem(NOTIFICATION_SETTINGS_HASH_KEY, getSettingsHash(settings, profile));
-  } catch (_) {}
-
-  // Also sync the persistent prayer status notification if enabled
-  await updatePrayerStatusNotification();
-
-  console.log(`[NotificationManager] Successfully scheduled ${scheduledCount} notifications for the next 30 days.`);
-
-  // ── Diagnostic: verify actual scheduled count ─────────────────────────────
-  // If this logs 0 after a successful sync, the problem is in scheduling (e.g.
-  // permissions, exact alarm denied, all times already past).
-  // If this logs >0, the problem is in delivery (e.g. channel sound missing,
-  // channel misconfigured, battery optimisation killing the alarm).
-  if (Platform.OS === 'android') {
+    // Mark synced
     try {
-      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-      // Filter out the prayer status TIME_INTERVAL notification from the count
-      const adhanOnly = scheduled.filter(
-        n => n.content.data?.intent !== 'prayer_status'
-      );
-      console.log(
-        `[NotificationManager] DIAGNOSTIC: ${adhanOnly.length} Adhan notifications currently in the schedule queue.` +
-        ` (${adhanOnly.length === 0 ? 'PROBLEM IS IN SCHEDULING' : 'Scheduling OK — if silent, problem is in DELIVERY/CHANNEL'})`
-      );
-    } catch (e) {
-      console.warn('[NotificationManager] DIAGNOSTIC: Could not read scheduled notifications:', e);
+      const syncNow = new Date();
+      const currentMonthKey = `${syncNow.getFullYear()}-${String(syncNow.getMonth() + 1).padStart(2, '0')}`;
+      await AsyncStorage.setItem(NOTIFICATION_CACHE_KEY, currentMonthKey);
+      // Save hash with location so future location changes invalidate the cache
+      await AsyncStorage.setItem(NOTIFICATION_SETTINGS_HASH_KEY, getSettingsHash(settings, profile));
+    } catch (_) { }
+
+    // Also sync the persistent prayer status notification if enabled
+    await updatePrayerStatusNotification();
+
+    console.log(`[NotificationManager] Successfully scheduled ${scheduledCount} notifications for the next 30 days.`);
+
+    // ── Diagnostic: verify actual scheduled count ─────────────────────────────
+    // If this logs 0 after a successful sync, the problem is in scheduling (e.g.
+    // permissions, exact alarm denied, all times already past).
+    // If this logs >0, the problem is in delivery (e.g. channel sound missing,
+    // channel misconfigured, battery optimisation killing the alarm).
+    if (Platform.OS === 'android') {
+      try {
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        // Filter out the prayer status TIME_INTERVAL notification from the count
+        const adhanOnly = scheduled.filter(
+          n => n.content.data?.intent !== 'prayer_status'
+        );
+        console.log(
+          `[NotificationManager] DIAGNOSTIC: ${adhanOnly.length} Adhan notifications currently in the schedule queue.` +
+          ` (${adhanOnly.length === 0 ? 'PROBLEM IS IN SCHEDULING' : 'Scheduling OK — if silent, problem is in DELIVERY/CHANNEL'})`
+        );
+      } catch (e) {
+        console.warn('[NotificationManager] DIAGNOSTIC: Could not read scheduled notifications:', e);
+      }
     }
-  }
   } finally {
     isSyncing = false;
   }
@@ -615,10 +614,10 @@ export async function scheduleTestAdhan(
  */
 export async function getDebugNotificationInfo() {
   if (Platform.OS === 'web') return { scheduledCount: 0, notificationGranted: false, exactAlarmGranted: false };
-  
+
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const perms = await Notifications.getPermissionsAsync();
-  
+
   let exactAlarmGranted = true; // Auto-granted on iOS and Android 13+ (with USE_EXACT_ALARM)
   if (Platform.OS === 'android') {
     const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
@@ -694,7 +693,7 @@ async function processAdhanIntent(data: any, fromUserTap: boolean = false): Prom
  * Initializes listeners dynamically on App boot.
  */
 export const initializeNotificationEngine = () => {
-  if (Platform.OS === 'web') return () => {};
+  if (Platform.OS === 'web') return () => { };
 
   // Ensure Android channels exist at boot
   ensureAndroidChannels();
@@ -712,7 +711,7 @@ export const initializeNotificationEngine = () => {
       console.log('[NotificationManager] Cold-start notification response:', data);
       processAdhanIntent(data, true);
     }
-  }).catch(() => {});
+  }).catch(() => { });
 
   // 1. FOREGROUND TRIGGER
   // Fires when user is ACTIVELY in the app and the scheduled time occurs.

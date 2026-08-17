@@ -55,7 +55,15 @@ async function ensureAudioEnabled(): Promise<void> {
   }
 }
 
+let vibrationInterval: ReturnType<typeof setInterval> | null = null;
+
 export const stopAdhan = async () => {
+  Vibration.cancel();
+  if (vibrationInterval) {
+    clearInterval(vibrationInterval);
+    vibrationInterval = null;
+  }
+
   if (globalAdhanSound) {
     try {
       const status = await globalAdhanSound.getStatusAsync();
@@ -374,12 +382,40 @@ async function _playShortAdhan(voiceKey: string): Promise<void> {
   }
 };
 
-export const vibrateAdhan = (): void => {
-  // Set isAdhanPlaying briefly so Quran reader pauses consistently
+export const vibrateAdhan = (repeat: boolean = true): void => {
+  Vibration.cancel();
+  if (vibrationInterval) {
+    clearInterval(vibrationInterval);
+    vibrationInterval = null;
+  }
+
   useAppStore.getState().setAdhanPlaying(true);
-  Vibration.vibrate([0, 500, 200, 500, 200, 500]);
-  // Clear the flag after vibration completes (~2.4s total pattern)
-  setTimeout(() => {
-    useAppStore.getState().setAdhanPlaying(false);
-  }, 2500);
+
+  if (Platform.OS === 'android') {
+    // Repeating pulse pattern: [delay, vibrate, pause, vibrate, pause...]
+    // Passing repeat=true makes Android repeat continuously until Vibration.cancel()
+    const pattern = [0, 800, 400, 800, 400, 800, 800];
+    Vibration.vibrate(pattern, repeat);
+  } else {
+    Vibration.vibrate();
+    if (repeat) {
+      vibrationInterval = setInterval(() => {
+        Vibration.vibrate();
+      }, 1500);
+    }
+  }
+
+  // Safety fallback: auto-stop after 30 seconds if left unattended
+  if (repeat) {
+    if (shortAdhanTimeoutMap) {
+      clearTimeout(shortAdhanTimeoutMap);
+    }
+    shortAdhanTimeoutMap = setTimeout(() => {
+      stopAdhan();
+    }, 30000);
+  } else {
+    setTimeout(() => {
+      useAppStore.getState().setAdhanPlaying(false);
+    }, 2500);
+  }
 };

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
+  Vibration,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -16,7 +17,7 @@ import { Colors, Typography, Spacing, BorderRadius } from '../theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAppStore } from '../store/useAppStore';
 import { HapticButton } from '../components/HapticButton';
-import { playFullAdhan, stopAdhan } from '../services/adhanManager';
+import { playFullAdhan, playShortAdhan, vibrateAdhan, stopAdhan } from '../services/adhanManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -66,20 +67,27 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
   const prayerInfo = PRAYER_DESCRIPTIONS[currentPrayer];
 
   useEffect(() => {
-    // Only start playback if the notification manager hasn't already triggered it.
-    // handleAdhanTrigger in notificationManager.ts fires BEFORE navigating here,
-    // so isAdhanPlaying will be true if audio is already playing.
+    const prayerConfig = adhanSettings.prayers[prayer as PrayerKey];
+    const alertType = prayerConfig?.alertType || 'adhan';
     const alreadyPlaying = useAppStore.getState().isAdhanPlaying;
 
-    if (!alreadyPlaying) {
-      const phraseEnabled =
-        prayer === 'Fajr' &&
-        (adhanSettings.prayers.Fajr.fajrPhrase ?? true);
+    if (alertType === 'silent_vibrate') {
+      vibrateAdhan();
+    } else if (alertType === 'beep') {
+      if (!alreadyPlaying) {
+        playShortAdhan(prayerConfig?.voice || 'makkah');
+      }
+    } else {
+      if (!alreadyPlaying) {
+        const phraseEnabled =
+          prayer === 'Fajr' &&
+          (prayerConfig?.fajrPhrase ?? true);
 
-      playFullAdhan(
-        adhanSettings.prayers[prayer as PrayerKey]?.voice || 'makkah',
-        phraseEnabled
-      );
+        playFullAdhan(
+          prayerConfig?.voice || 'makkah',
+          phraseEnabled
+        );
+      }
     }
 
     // Fire haptics
@@ -129,16 +137,22 @@ export const AdhanAlertScreen = ({ route, navigation }: any) => {
     setPrayerStatus(prayer as PrayerKey, 'done');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await stopAdhan();
+    Vibration.cancel();
+    useAppStore.getState().setAdhanPlaying(false);
     navigation.goBack();
   };
 
   const handleDismiss = async () => {
     await stopAdhan();
-    navigation.goBack();
+    Vibration.cancel();
+    useAppStore.getState().setAdhanPlaying(false);
+    // Keep the user on the AdhanAlertScreen
   };
 
   const handleSnooze = async () => {
     await stopAdhan();
+    Vibration.cancel();
+    useAppStore.getState().setAdhanPlaying(false);
     await Notifications.scheduleNotificationAsync({
       content: {
         title: `${prayer} Prayer Reminder`,
